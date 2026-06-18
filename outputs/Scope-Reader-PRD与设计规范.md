@@ -1,13 +1,13 @@
-# Scope EPUB 阅读器 PRD 与设计规范
+# Scope Reader PRD 与设计规范
 
-> 版本：0.1  
+> 版本：0.2  
 > 日期：2026-06-18  
 > 状态：待产品评审  
 > 依据：[W3C EPUB 3.3](https://www.w3.org/TR/epub-33/)、[W3C EPUB 3.3 Reading Systems](https://www.w3.org/TR/epub-rs-33/)、[epub.js](https://github.com/futurepress/epub.js)、[IndexedDB](https://developer.mozilla.org/docs/Web/API/IndexedDB_API)
 
 ## 1. 产品定义
 
-Scope 是一个完全运行在浏览器中的 EPUB 阅读网页程序。图书文件不上传服务器，解析、渲染、阅读进度保存均在本地完成，必要时使用 IndexedDB 保存文件 Blob、书籍元数据和阅读状态。
+Scope Reader 是一个面向多种数字图书格式、完全运行在浏览器中的通用阅读器。图书文件不上传服务器，解析、渲染、阅读进度保存均在本地完成，必要时使用 IndexedDB 保存文件 Blob、书籍元数据和阅读状态。首版只实现 EPUB，但领域模型、存储和阅读界面从第一天起保持格式无关，以便后续接入其他格式引擎。
 
 产品的主要差异点是阅读结构：采用类似 Google 搜索结果页（SERP）的信息层级，左侧为高可读性的章节正文主列，右侧为粘性章节树与图书上下文。正文是视觉主体，目录是持续可见的导航，而不是传统阅读器中临时打开的侧栏。
 
@@ -20,7 +20,7 @@ Scope 是一个完全运行在浏览器中的 EPUB 阅读网页程序。图书�
 3. 正确展示常见正文、标题、列表、表格、图片、链接、注释和基础样式。
 4. 右侧展示层级章节树，点击可定位，阅读时自动高亮当前章节。
 5. 自动保存并恢复阅读位置、字号、行距、主题和目录折叠状态。
-6. 解析引擎可替换；首版使用 epub.js，但产品代码不直接依赖其具体 API。
+6. 阅读引擎按格式可插拔；首版由 EPUB 适配器使用 epub.js，产品代码不直接依赖其具体 API。
 7. 对不支持或损坏的图书给出可诊断的中文错误，不使用含糊的“打开失败”。
 
 ### 2.2 首版非目标
@@ -30,11 +30,12 @@ Scope 是一个完全运行在浏览器中的 EPUB 阅读网页程序。图书�
 - 不解密、绕过或接入 DRM。
 - 不提供云端书库、账号同步、跨设备同步。
 - 不做批注、全文搜索、TTS、AI 总结与社交能力。
+- 首版不读取 PDF、TXT、Markdown、FB2、MOBI、AZW、CBZ 等其他格式，但架构必须允许后续增加适配器。
 - 不保证还原出版社为特定阅读器制作的私有扩展。
 
 ## 3. 用户与核心任务
 
-目标用户是希望在桌面浏览器中阅读技术书、小说、散文和长篇非虚构内容的人。核心任务只有一条：导入一本可支持的 EPUB，快速确认目录结构，在正文与章节树之间连续导航，并在下次打开时回到原处。
+目标用户是希望在桌面浏览器中统一阅读不同来源数字图书的人。首版核心任务只有一条：导入一本可支持的 EPUB，快速确认目录结构，在正文与章节树之间连续导航，并在下次打开时回到原处。
 
 成功标准：首次导入后，用户在三个可见步骤内进入正文；刷新页面或关闭浏览器后再次打开，能恢复到上次位置；任何不兼容情况都能明确指出原因和处理建议。
 
@@ -185,7 +186,7 @@ EPUB 3 允许容器约束脚本和 spine 级脚本。脚本可能访问存储、
 ### 7.1 技术栈
 
 - React + TypeScript + Vite。
-- epub.js 作为首个 EPUB 引擎适配器。
+- epub.js 作为首个 EPUB 底层驱动，由 `EpubEngineAdapter` 隔离其 API。
 - IndexedDB 保存图书 Blob、书籍索引、进度和设置；可使用轻量封装，但领域层不依赖封装库。
 - React 状态只管理界面生命周期；图书解析、阅读位置和持久化通过独立服务管理。
 
@@ -194,8 +195,9 @@ EPUB 3 允许容器约束脚本和 spine 级脚本。脚本可能访问存储、
 ```text
 UI / React
   -> Reader Application Services
-    -> EpubEngine 接口
-      -> EpubJsAdapter（首版）
+    -> PublicationEngine 接口
+      -> EpubEngineAdapter
+        -> EpubJsDriver（首版）
     -> LibraryRepository 接口
       -> IndexedDbLibraryRepository
 ```
@@ -205,17 +207,19 @@ UI / React
 ### 7.3 引擎抽象
 
 ```ts
-interface EpubEngine {
-  readonly capabilities: EpubCapabilities;
-  open(source: ArrayBuffer): Promise<EpubPublication>;
-  inspect(source: ArrayBuffer): Promise<EpubInspection>;
+interface PublicationEngine {
+  readonly format: PublicationFormat;
+  readonly capabilities: PublicationCapabilities;
+  canOpen(source: PublicationSource): Promise<FormatConfidence>;
+  inspect(source: PublicationSource): Promise<PublicationInspection>;
+  open(source: PublicationSource): Promise<Publication>;
   close(): Promise<void>;
 }
 
-interface EpubPublication {
+interface Publication {
   getMetadata(): Promise<BookMetadata>;
   getNavigation(): Promise<NavigationTree>;
-  getReadingOrder(): Promise<SpineItem[]>;
+  getReadingOrder(): Promise<ReadingOrderItem[]>;
   createRenderSession(target: HTMLElement, options: RenderOptions): Promise<RenderSession>;
 }
 
@@ -230,16 +234,16 @@ interface RenderSession {
 }
 ```
 
-`PublicationTarget`、`PublicationLocation`、`NavigationTree` 和错误类型必须是项目自有类型。epub.js 的 Book、Rendition、Section、Location、CFI 等对象不得穿透适配器边界。CFI 可以作为位置对象中的不透明字符串持久化，但业务层不解析其内部结构。
+`PublicationFormat`、`PublicationSource`、`PublicationTarget`、`PublicationLocation`、`NavigationTree` 和错误类型必须是项目自有类型。epub.js 的 Book、Rendition、Section、Location、CFI 等对象不得穿透 EPUB 适配器边界。CFI 可以作为 EPUB 位置对象中的不透明字符串持久化，但业务层不解析其内部结构；未来 PDF 页码、文本字符偏移和漫画页索引都映射为各自的位置载荷。
 
 ### 7.4 能力探测
 
-适配器提供 `fixedLayout`、`scripting`、`drm`、`mediaOverlays`、`verticalWriting`、`rtl` 等能力标记。应用层在导入检查结果与引擎能力之间做明确匹配；能力不足时抛出统一的 `UNSUPPORTED_*` 错误，不带病进入渲染阶段。
+引擎提供格式无关的分页、流式排版、目录、搜索、媒体与加密能力标记，并允许格式适配器附加 EPUB 的 `fixedLayout`、`scripting`、`drm`、`mediaOverlays`、`verticalWriting`、`rtl` 等细分能力。应用层在导入检查结果与引擎能力之间做明确匹配；能力不足时抛出统一的 `UNSUPPORTED_*` 错误，不带病进入渲染阶段。
 
 ### 7.5 IndexedDB 数据模型
 
 - `books`：`id`、文件哈希、Blob、文件名、大小、导入时间、最近打开时间。
-- `publications`：规范化元数据、封面 Blob、版本、能力检查结果、目录摘要。
+- `publications`：格式 ID、引擎版本、规范化元数据、封面 Blob、格式版本、能力检查结果、目录摘要。
 - `readingStates`：书籍 ID、位置对象、spine 索引、百分比、更新时间。
 - `preferences`：全局与按书覆盖的主题、字号、行距、页边距。
 
@@ -280,6 +284,9 @@ interface RenderSession {
 
 ### 9.3 兼容性异常
 
+- `FORMAT_UNSUPPORTED`：当前没有可处理该格式的适配器。
+- `FORMAT_MISMATCH`：扩展名、MIME 与内容探测结果互相冲突。
+- `FORMAT_ENGINE_NOT_FOUND`：格式已识别，但对应引擎未注册或加载失败。
 - `UNSUPPORTED_EPUB_VERSION`：版本无法兼容。
 - `UNSUPPORTED_FIXED_LAYOUT`：检测到固定版式。
 - `UNSUPPORTED_SCRIPT_REQUIRED`：核心内容依赖脚本。
@@ -334,7 +341,7 @@ interface RenderSession {
 ### 11.2 自动化测试
 
 - 领域单元测试：目录规范化、位置对象、兼容决策、异常映射。
-- 适配器契约测试：任意引擎适配器必须通过同一套 `EpubEngine` 行为测试。
+- 适配器契约测试：任意格式引擎必须通过同一套 `PublicationEngine` 行为测试；EPUB 驱动还需通过 EPUB 专用契约测试。
 - 存储测试：事务成功、配额失败、损坏恢复、删除一致性。
 - UI 测试：导入、解析、目录跳转、章节高亮、设置、恢复进度。
 - 安全测试：脚本不执行、外链拦截、远程资源不加载、ZIP bomb 限制。
@@ -343,7 +350,7 @@ interface RenderSession {
 
 1. 代表性 EPUB 2/3 流式样本均能导入、阅读和恢复进度。
 2. 固定版式、关键脚本依赖和 DRM 样本分别返回对应错误码。
-3. 代码扫描确认只有 epub.js 适配器目录导入第三方引擎。
+3. 代码扫描确认只有 `EpubJsDriver` 目录导入 epub.js，EPUB 适配器及通用应用层都不直接依赖它。
 4. 替换为测试用假引擎后，UI 与应用服务无需修改即可运行关键流程。
 5. 桌面端正文与章节树同时可用，移动端目录抽屉无溢出。
 6. 所有失败路径均显示中文原因、阶段与可操作建议。
@@ -351,14 +358,57 @@ interface RenderSession {
 ## 12. 实施阶段
 
 1. 工程基础与设计令牌。
-2. 领域模型、统一异常与 `EpubEngine` 契约。
-3. epub.js 适配器及契约测试。
+2. 格式无关领域模型、统一异常与 `PublicationEngine` 契约。
+3. EPUB 适配器、epub.js 驱动及两层契约测试。
 4. IndexedDB 书库与阅读状态。
 5. 导入流程与兼容检查。
 6. SERP 式阅读页、章节树与阅读设置。
 7. 响应式、可访问性、安全与异常体验。
 8. 样本矩阵验证与浏览器视觉验收。
 
-## 13. 后续扩展
+## 13. 多格式路线图
 
-引擎抽象稳定后，可以增加第二个适配器验证可替换性，例如基于 Readium Web 或自研解析器。后续产品能力按独立需求评估：全文搜索、批注、TTS、Media Overlays、云同步、固定版式阅读器。任何扩展不得修改已有领域契约的语义，只能以向后兼容的能力标记与新接口扩展。
+### 阶段 0：通用阅读内核与 EPUB（当前）
+
+- 建立 `PublicationEngine`、统一元数据、目录、阅读顺序、位置、渲染会话和异常模型。
+- 使用 `EpubEngineAdapter -> EpubJsDriver` 实现 EPUB 2/3 流式阅读。
+- 完成 SERP 式正文与章节树、IndexedDB 书库、进度恢复和阅读偏好。
+- 以测试假引擎验证 UI 与存储层不依赖 EPUB 概念。
+
+### 阶段 1：开放文本格式
+
+- TXT：字符编码探测、段落识别、章节规则与字符偏移位置。
+- Markdown：CommonMark 基础语法、标题目录、代码块和本地图片资源。
+- HTML／单文件网页：清理不可信内容、提取正文、重写资源地址。
+- FB2：解析 XML 元数据、章节层级、内嵌图片和注释。
+
+这一阶段优先验证流式排版格式能否共用正文渲染与章节树，而不是复制 EPUB 阅读器。
+
+### 阶段 2：页面型与漫画格式
+
+- PDF：页码、缩放、连续滚动、文本层与目录；浏览器端优先评估 PDF.js。
+- CBZ：按自然文件名排序图片、单双页与长图模式。
+- CBR：浏览器端 RAR 解压能力、性能、许可证和包体积评估通过后再实现。
+- DjVu：仅在存在成熟、可维护的 WebAssembly 解码方案时进入开发。
+
+页面型格式不能伪装成流式正文；它们复用应用外壳、书库和右侧结构树，但拥有独立的画布渲染会话。
+
+### 阶段 3：遗留电子书格式
+
+- MOBI／PalmDOC：先支持无 DRM 的公开结构，明确字符编码和旧式目录限制。
+- AZW／AZW3：只评估无 DRM 文件；不绕过 Kindle DRM。需要先完成格式合法性、解析器许可证与样本覆盖评估。
+- FictionBook 衍生格式与其他区域性格式：依据真实用户需求和可获得测试样本排序。
+
+### 阶段 4：跨格式阅读能力
+
+- 全文搜索、书签、批注、引用导出和 TTS。
+- 跨设备同步与可选云书库必须在隐私模型、加密和账号体系单独立项后实施。
+- EPUB Media Overlays、固定版式及更复杂的可访问性能力按独立渲染能力推进。
+
+### 路线图准入原则
+
+每个新格式必须具备：公开或合法可用的格式规范、可再分发测试样本、明确的 DRM 边界、浏览器端可行性验证、独立适配器、通用契约测试与格式专用异常映射。不得为了“看起来支持”而把未知二进制格式转换成图片或静默丢失目录、排版和进度语义。
+
+## 14. 长期扩展约束
+
+新增格式只能通过注册新的 `PublicationEngine` 或底层驱动接入。任何扩展不得修改已有领域契约的语义，只能以向后兼容的能力标记、新位置载荷与可选接口扩展。EPUB 引擎抽象稳定后，可增加基于 Readium Web 或自研解析器的第二个 EPUB 驱动，验证同一格式内部也能替换实现。
