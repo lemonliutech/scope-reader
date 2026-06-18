@@ -93,5 +93,6 @@ Scope Reader 借鉴 Google 搜索结果页的信息层级：正文是稳定的�
 
 ## 9. 相关文档
 
+- [UI 设计规范](ui-design.md)：布局、视觉令牌、页面、组件、交互状态与可访问性。
 - [EPUB 兼容性附录](epub-compatibility.md)：格式知识、支持矩阵与不支持原因。
 - [技术设计](../superpowers/specs/2026-06-18-scope-reader-design.md)：引擎抽象、存储、安全、异常与测试。
