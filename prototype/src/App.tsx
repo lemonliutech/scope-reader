@@ -8,7 +8,24 @@ import {
   X,
 } from "@phosphor-icons/react";
 
-const parts = [
+type Part = {
+  id: string;
+  title: string;
+  chapters: string[];
+};
+
+type ChapterContent = {
+  subtitle: string;
+  intro: string[];
+};
+
+type TreeGroupProps = {
+  part: Part;
+  active: string;
+  onSelect: (title: string) => void;
+};
+
+const parts: Part[] = [
   {
     id: "preface",
     title: "前言",
@@ -45,7 +62,7 @@ const parts = [
   },
 ];
 
-const paragraphs = {
+const paragraphs: Record<string, ChapterContent> = {
   "第1章 认知革命": {
     subtitle: "第一部分 认知革命",
     intro: [
@@ -69,7 +86,7 @@ const paragraphs = {
   },
 };
 
-function TreeGroup({ part, active, onSelect }) {
+function TreeGroup({ part, active, onSelect }: TreeGroupProps) {
   const [open, setOpen] = useState(part.id !== "preface");
   const hasChildren = part.chapters.length > 0;
 
@@ -111,14 +128,14 @@ export function App() {
   const [activeChapter, setActiveChapter] = useState("第1章 认知革命");
   const [outlineOpen, setOutlineOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
-  const fileInputRef = useRef(null);
-  const articleRef = useRef(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const articleRef = useRef<HTMLElement>(null);
   const chapter = useMemo(
-    () => paragraphs[activeChapter] ?? paragraphs["第1章 认知革命"],
+    () => paragraphs[activeChapter] ?? paragraphs["第1章 认知革命"]!,
     [activeChapter],
   );
 
-  const selectChapter = (title) => {
+  const selectChapter = (title: string): void => {
     if (paragraphs[title]) setActiveChapter(title);
     setOutlineOpen(false);
     requestAnimationFrame(() => articleRef.current?.scrollIntoView({ behavior: "smooth" }));
