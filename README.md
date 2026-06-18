@@ -6,6 +6,18 @@ Scope Reader 是一个完全运行在浏览器中的通用图书阅读网页程�
 
 ## 当前状态
 
+### HTML/CSS 交互原型
+
+桌面双栏原型位于 `prototype/`，用于验证 Wiki 风格的正文排版与贴身章节树：
+
+```bash
+cd prototype
+npm install
+npm run dev
+```
+
+原型使用确定性的 CSS Grid：正文列 `780px`、章节树 `340px`、列间距 `0`，两栏共用 `1px` 分隔线。
+
 项目处于产品设计与工程规划阶段，尚未发布可运行版本。
 
 首版范围：
