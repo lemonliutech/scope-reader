@@ -101,12 +101,12 @@ export const ISSUE_COPY = {
 } satisfies Record<ScopeErrorCode, IssueCopy>;
 
 export class ScopeException extends Error {
-  readonly issues: readonly ScopeIssue[];
+  readonly issues: ScopeIssue[];
 
-  constructor(issues: readonly ScopeIssue[], options?: ErrorOptions) {
-    super(issues.map(({ userMessage }) => userMessage).join("\n"), options);
+  constructor(issues: ScopeIssue[], options?: ErrorOptions) {
+    super(issues.map(({ userMessage }) => userMessage).join("；"), options);
     this.name = "ScopeException";
-    this.issues = [...issues];
+    this.issues = issues;
   }
 }
 

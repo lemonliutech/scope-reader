@@ -5,7 +5,7 @@ import type { PublicationEngine } from "./PublicationEngine";
 export class PublicationEngineRegistry {
   constructor(private readonly engines: readonly PublicationEngine[]) {}
 
-  async resolve(source: PublicationSource): Promise<PublicationEngine> {
+  async select(source: PublicationSource): Promise<PublicationEngine> {
     const confidences = await Promise.all(this.engines.map((engine) => engine.canOpen(source)));
     let selected: PublicationEngine | undefined;
     let highestConfidence = 0;

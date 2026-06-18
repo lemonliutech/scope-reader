@@ -1,5 +1,6 @@
-import { describe, expect, it } from "vitest";
-import { blockingIssues, issue } from "./scopeError";
+import { describe, expect, expectTypeOf, it } from "vitest";
+import { blockingIssues, issue, ScopeException } from "./scopeError";
+import type { ScopeIssue } from "./scopeError";
 
 describe("blockingIssues", () => {
   it("returns every blocking issue without mutating or hiding warnings", () => {
@@ -18,5 +19,20 @@ describe("blockingIssues", () => {
       "UNSUPPORTED_FIXED_LAYOUT",
       "UNSUPPORTED_DRM",
     ]);
+  });
+});
+
+describe("ScopeException", () => {
+  it("keeps the issue array and joins every message with a Chinese semicolon", () => {
+    const issues = [
+      issue("UNSUPPORTED_FIXED_LAYOUT", "CHECK_CAPABILITIES", true),
+      issue("UNSUPPORTED_DRM", "CHECK_CAPABILITIES", true),
+    ];
+
+    const exception = new ScopeException(issues);
+
+    expect(exception.issues).toBe(issues);
+    expect(exception.message).toBe(`${issues[0]?.userMessage}；${issues[1]?.userMessage}`);
+    expectTypeOf(exception.issues).toEqualTypeOf<ScopeIssue[]>();
   });
 });
