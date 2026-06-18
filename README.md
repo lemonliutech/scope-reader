@@ -45,7 +45,9 @@ EPUB CFI、PDF 页码、文本字符偏移和漫画页索引等格式差异封�
 
 ## 文档
 
-- [Scope Reader PRD 与设计规范](docs/superpowers/specs/2026-06-18-scope-reader-design.md)
+- [产品需求文档](docs/product/PRD.md)
+- [EPUB 兼容性附录](docs/product/epub-compatibility.md)
+- [技术设计](docs/superpowers/specs/2026-06-18-scope-reader-design.md)
 
 ## 隐私与安全
 
