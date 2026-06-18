@@ -4,9 +4,9 @@
 
 **Goal:** 用当前图书切换器替换阅读页搜索式输入框，并新增支持导入、打开、删除、进度、搜索、格式筛选和最近阅读排序的 `/library` 页面。
 
-**Architecture:** 保持 React + Vite 单页原型，不增加路由库；`AppShell` 通过 History API 切换阅读页和管理页。图书状态集中在 `useLibrary`，持久化与筛选排序保持为可测试的纯函数，页面组件只负责交互和呈现。
+**Architecture:** 保持 React + Vite 单页原型，不增加路由库；全部业务源代码迁移到严格 TypeScript。`AppShell` 通过 History API 切换阅读页和管理页，图书状态集中在 `useLibrary`，持久化与筛选排序保持为带明确类型的可测试纯函数。
 
-**Tech Stack:** React 19、Vite 6、原生 CSS Grid、Phosphor Icons、Vitest、Testing Library、jsdom、localStorage
+**Tech Stack:** TypeScript 5、React 19、Vite 6、原生 CSS Grid、Phosphor Icons、Vitest、Testing Library、jsdom、localStorage
 
 ---
 
@@ -14,34 +14,41 @@
 
 | 文件 | 职责 |
 | --- | --- |
-| `prototype/src/App.jsx` | 组合全局状态、页面路由和弹窗 |
-| `prototype/vite.config.mjs` | Vite 与 Vitest 配置 |
-| `prototype/src/test/setup.js` | Testing Library DOM 断言初始化 |
-| `prototype/src/data/demoBooks.js` | 演示图书与默认状态 |
-| `prototype/src/library/libraryStore.js` | 持久化、校验、导入、过滤与排序纯函数 |
-| `prototype/src/library/libraryStore.test.js` | 图书状态与查询规则单元测试 |
-| `prototype/src/library/useLibrary.js` | React 图书状态、回退与操作接口 |
-| `prototype/src/library/useLibrary.test.jsx` | 状态持久化和操作 Hook 测试 |
-| `prototype/src/routing/usePathname.js` | History API 路由 Hook |
-| `prototype/src/routing/usePathname.test.jsx` | 路由与 `popstate` 测试 |
-| `prototype/src/components/AppHeader.jsx` | Scope 顶栏和页面入口 |
-| `prototype/src/components/CurrentBookSwitcher.jsx` | 当前图书、最近图书和导入入口 |
-| `prototype/src/components/ConfirmDialog.jsx` | 删除确认弹窗 |
-| `prototype/src/pages/ReaderPage.jsx` | 现有正文和章节树 |
-| `prototype/src/pages/LibraryPage.jsx` | 搜索、筛选、排序、表格和空状态 |
-| `prototype/src/pages/LibraryPage.test.jsx` | 管理页交互测试 |
+| `prototype/src/App.tsx` | 组合全局状态、页面路由和弹窗 |
+| `prototype/src/main.tsx` | React TypeScript 入口 |
+| `prototype/tsconfig.json` | 严格 TypeScript 编译配置 |
+| `prototype/vite.config.ts` | Vite 与 Vitest 配置 |
+| `prototype/src/test/setup.ts` | Testing Library DOM 断言初始化 |
+| `prototype/src/data/demoBooks.ts` | 演示图书与默认状态 |
+| `prototype/src/library/libraryStore.ts` | 持久化、校验、导入、过滤与排序纯函数 |
+| `prototype/src/library/libraryStore.test.ts` | 图书状态与查询规则单元测试 |
+| `prototype/src/library/useLibrary.ts` | React 图书状态、回退与操作接口 |
+| `prototype/src/library/useLibrary.test.tsx` | 状态持久化和操作 Hook 测试 |
+| `prototype/src/routing/usePathname.ts` | History API 路由 Hook |
+| `prototype/src/routing/usePathname.test.tsx` | 路由与 `popstate` 测试 |
+| `prototype/src/components/AppHeader.tsx` | Scope 顶栏和页面入口 |
+| `prototype/src/components/CurrentBookSwitcher.tsx` | 当前图书、最近图书和导入入口 |
+| `prototype/src/components/ConfirmDialog.tsx` | 删除确认弹窗 |
+| `prototype/src/pages/ReaderPage.tsx` | 现有正文和章节树 |
+| `prototype/src/pages/LibraryPage.tsx` | 搜索、筛选、排序、表格和空状态 |
+| `prototype/src/pages/LibraryPage.test.tsx` | 管理页交互测试 |
 | `prototype/src/styles.css` | 顶栏、切换器、表格、状态与响应式 |
 | `prototype/design-qa.md` | 最终视觉与交互 QA 证据 |
 
-### Task 1: 安装测试工具并建立图书纯函数
+### Task 1: 将原型迁移到严格 TypeScript 并建立图书纯函数
 
 **Files:**
 - Modify: `prototype/package.json`
-- Modify: `prototype/vite.config.mjs`
-- Create: `prototype/src/test/setup.js`
-- Create: `prototype/src/data/demoBooks.js`
-- Create: `prototype/src/library/libraryStore.js`
-- Create: `prototype/src/library/libraryStore.test.js`
+- Create: `prototype/tsconfig.json`
+- Rename: `prototype/vite.config.mjs` → `prototype/vite.config.ts`
+- Rename: `prototype/src/main.jsx` → `prototype/src/main.tsx`
+- Rename: `prototype/src/App.jsx` → `prototype/src/App.tsx`
+- Modify: `prototype/index.html`
+- Modify: `prototype/vite.config.ts`
+- Create: `prototype/src/test/setup.ts`
+- Create: `prototype/src/data/demoBooks.ts`
+- Create: `prototype/src/library/libraryStore.ts`
+- Create: `prototype/src/library/libraryStore.test.ts`
 
 - [ ] **Step 1: 安装测试依赖并添加脚本**
 
@@ -49,37 +56,152 @@ Run:
 
 ```bash
 cd prototype
-npm install -D vitest jsdom @testing-library/react @testing-library/jest-dom
+npm install -D typescript @types/react @types/react-dom vitest jsdom @testing-library/react @testing-library/jest-dom
 npm pkg set scripts.test="vitest run"
 npm pkg set scripts.test:watch="vitest"
+npm pkg set scripts.typecheck="tsc --noEmit --pretty false"
 ```
 
-Expected: `package.json` 包含 `test` 和 `test:watch`，命令退出码为 0。
+Expected: `package.json` 包含 `test`、`test:watch` 和 `typecheck`，命令退出码为 0。
 
-- [ ] **Step 2: 配置 jsdom 测试环境**
+- [ ] **Step 2: 迁移入口并配置严格 TypeScript**
 
-```js
-// prototype/src/test/setup.js
+Run:
+
+```bash
+cd prototype
+git mv vite.config.mjs vite.config.ts
+git mv src/main.jsx src/main.tsx
+git mv src/App.jsx src/App.tsx
+```
+
+将 `index.html` 的入口改为：
+
+```html
+<script type="module" src="/src/main.tsx"></script>
+```
+
+创建配置：
+
+```json
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "useDefineForClassFields": true,
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "skipLibCheck": true
+  },
+  "include": ["src", "vite.config.ts"]
+}
+```
+
+重命名后立即为现有原型补齐最小类型，确保迁移提交本身满足 `strict`。在 `App.tsx` 的 `parts` 之前加入：
+
+```ts
+type Part = {
+  id: string;
+  title: string;
+  chapters: string[];
+};
+
+type ChapterContent = {
+  subtitle: string;
+  intro: string[];
+};
+
+type TreeGroupProps = {
+  part: Part;
+  active: string;
+  onSelect: (title: string) => void;
+};
+```
+
+不改数组和对象内容，只做以下三个精确替换：
+
+```diff
+-const parts = [
++const parts: Part[] = [
+
+-const paragraphs = {
++const paragraphs: Record<string, ChapterContent> = {
+
+-function TreeGroup({ part, active, onSelect }) {
++function TreeGroup({ part, active, onSelect }: TreeGroupProps) {
+```
+
+将 `App` 内对应声明精确改为：
+
+```tsx
+const fileInputRef = useRef<HTMLInputElement>(null);
+const articleRef = useRef<HTMLElement>(null);
+const chapter = useMemo(
+  () => paragraphs[activeChapter] ?? paragraphs["第1章 认知革命"]!,
+  [activeChapter],
+);
+
+const selectChapter = (title: string): void => {
+  if (paragraphs[title]) setActiveChapter(title);
+  setOutlineOpen(false);
+  requestAnimationFrame(() => articleRef.current?.scrollIntoView({ behavior: "smooth" }));
+};
+```
+
+- [ ] **Step 3: 配置 jsdom 测试环境**
+
+```ts
+// prototype/src/test/setup.ts
 import "@testing-library/jest-dom/vitest";
 ```
 
-在 `prototype/vite.config.mjs` 的 `defineConfig` 中加入：
+将 `prototype/vite.config.ts` 完整改为：
 
-```js
+```ts
+import react from "@vitejs/plugin-react";
+import { defineConfig } from "vitest/config";
+
 export default defineConfig({
   plugins: [react()],
   test: {
     environment: "jsdom",
-    setupFiles: "./src/test/setup.js",
+    setupFiles: "./src/test/setup.ts",
     css: true,
   },
 });
 ```
 
-- [ ] **Step 3: 创建演示图书数据**
+- [ ] **Step 4: 创建带类型的演示图书数据**
 
-```js
-// prototype/src/data/demoBooks.js
+```ts
+// prototype/src/data/demoBooks.ts
+export type BookFormat = "EPUB";
+export type FormatFilter = "ALL" | BookFormat;
+export type SortBy = "LAST_READ_DESC" | "IMPORTED_DESC" | "TITLE_ASC";
+
+export type LocalBook = {
+  id: string;
+  title: string;
+  author: string;
+  format: BookFormat;
+  coverUrl: string | null;
+  progress: number;
+  lastReadAt: string | null;
+  importedAt: string;
+};
+
+export type LibrarySnapshot = {
+  books: LocalBook[];
+  currentBookId: string | null;
+};
+
 export const DEMO_BOOKS = [
   {
     id: "sapiens",
@@ -111,18 +233,18 @@ export const DEMO_BOOKS = [
     lastReadAt: null,
     importedAt: "2026-06-18T01:00:00.000Z",
   },
-];
+] satisfies LocalBook[];
 
-export const DEFAULT_LIBRARY_STATE = {
+export const DEFAULT_LIBRARY_STATE: LibrarySnapshot = {
   books: DEMO_BOOKS,
   currentBookId: "sapiens",
 };
 ```
 
-- [ ] **Step 4: 先写纯函数失败测试**
+- [ ] **Step 5: 先写纯函数失败测试**
 
-```js
-// prototype/src/library/libraryStore.test.js
+```ts
+// prototype/src/library/libraryStore.test.ts
 import { describe, expect, it } from "vitest";
 import { DEMO_BOOKS } from "../data/demoBooks.js";
 import {
@@ -154,7 +276,7 @@ describe("filterAndSortBooks", () => {
       formatFilter: "ALL",
       sortBy: "LAST_READ_DESC",
     });
-    expect(result.at(-1).id).toBe("1587");
+    expect(result.at(-1)?.id).toBe("1587");
   });
 });
 
@@ -170,47 +292,53 @@ describe("createImportedBook", () => {
 });
 ```
 
-- [ ] **Step 5: 运行测试确认失败**
+- [ ] **Step 6: 运行测试确认失败**
 
 Run:
 
 ```bash
 cd prototype
-npm test -- src/library/libraryStore.test.js
+npm test -- src/library/libraryStore.test.ts
 ```
 
-Expected: FAIL，原因是 `libraryStore.js` 尚不存在或导出函数未定义。
+Expected: FAIL，原因是 `libraryStore.ts` 尚不存在或导出函数未定义。
 
-- [ ] **Step 6: 实现纯函数**
+- [ ] **Step 7: 实现纯函数**
 
-```js
-// prototype/src/library/libraryStore.js
-const VALID_SORTS = new Set(["LAST_READ_DESC", "IMPORTED_DESC", "TITLE_ASC"]);
+```ts
+// prototype/src/library/libraryStore.ts
+import type { LibrarySnapshot, LocalBook, FormatFilter, SortBy } from "../data/demoBooks.js";
 
-export function isBook(value) {
-  return Boolean(
-    value &&
-      typeof value.id === "string" &&
-      typeof value.title === "string" &&
-      typeof value.author === "string" &&
-      value.format === "EPUB" &&
-      Number.isFinite(value.progress) &&
-      typeof value.importedAt === "string",
-  );
+type FilterOptions = { query: string; formatFilter: FormatFilter; sortBy: SortBy };
+const VALID_SORTS = new Set<SortBy>(["LAST_READ_DESC", "IMPORTED_DESC", "TITLE_ASC"]);
+
+export function isBook(value: unknown): value is LocalBook {
+  if (!value || typeof value !== "object") return false;
+  const book = value as Record<string, unknown>;
+  return typeof book.id === "string" &&
+    typeof book.title === "string" &&
+    typeof book.author === "string" &&
+    book.format === "EPUB" &&
+    typeof book.progress === "number" && Number.isFinite(book.progress) &&
+    typeof book.importedAt === "string" &&
+    (book.lastReadAt === null || typeof book.lastReadAt === "string") &&
+    (book.coverUrl === null || typeof book.coverUrl === "string");
 }
 
-export function parseLibraryState(raw) {
+export function parseLibraryState(raw: string): LibrarySnapshot | null {
   try {
-    const value = JSON.parse(raw);
-    if (!value || !Array.isArray(value.books) || !value.books.every(isBook)) return null;
-    if (value.currentBookId !== null && typeof value.currentBookId !== "string") return null;
-    return value;
+    const value: unknown = JSON.parse(raw);
+    if (!value || typeof value !== "object") return null;
+    const snapshot = value as Record<string, unknown>;
+    if (!Array.isArray(snapshot.books) || !snapshot.books.every(isBook)) return null;
+    if (snapshot.currentBookId !== null && typeof snapshot.currentBookId !== "string") return null;
+    return { books: snapshot.books, currentBookId: snapshot.currentBookId as string | null };
   } catch {
     return null;
   }
 }
 
-export function filterAndSortBooks(books, options) {
+export function filterAndSortBooks(books: readonly LocalBook[], options: FilterOptions): LocalBook[] {
   const query = options.query.trim().toLocaleLowerCase("zh-CN");
   const filtered = books.filter((book) => {
     const matchesQuery = !query || `${book.title} ${book.author}`.toLocaleLowerCase("zh-CN").includes(query);
@@ -229,44 +357,46 @@ export function filterAndSortBooks(books, options) {
   });
 }
 
-export function createImportedBook(file, now = new Date().toISOString()) {
+export function createImportedBook(file: Pick<File, "name">, now = new Date().toISOString()): LocalBook {
   if (!file.name.toLocaleLowerCase().endsWith(".epub")) {
     throw new Error("当前原型仅支持 EPUB");
   }
   const title = file.name.replace(/\.epub$/i, "").trim();
-  const id = `file-${file.name.toLocaleLowerCase().replace(/\s+/g, "-").replace(/[^\p{L}\p{N}.-]/gu, "")}`;
+  const slug = title.normalize("NFKC").toLocaleLowerCase().replace(/\s+/g, "-").replace(/[^\p{L}\p{N}-]/gu, "");
+  const id = `file-${slug}-epub`;
   return { id, title, author: "未知作者", format: "EPUB", coverUrl: null, progress: 0, lastReadAt: null, importedAt: now };
 }
 ```
 
-- [ ] **Step 7: 运行纯函数测试确认通过**
+- [ ] **Step 8: 运行纯函数测试和类型检查确认通过**
 
 Run:
 
 ```bash
 cd prototype
-npm test -- src/library/libraryStore.test.js
+npm test -- src/library/libraryStore.test.ts
+npm run typecheck
 ```
 
-Expected: PASS，5 tests passed。
+Expected: PASS，5 tests passed；TypeScript 0 errors。
 
-- [ ] **Step 8: 提交纯函数与测试工具**
+- [ ] **Step 9: 提交 TypeScript 迁移、纯函数与测试工具**
 
 ```bash
-git add prototype/package.json prototype/package-lock.json prototype/vite.config.mjs prototype/src/test/setup.js prototype/src/data prototype/src/library/libraryStore.js prototype/src/library/libraryStore.test.js
-git commit -m "test: add local library state model"
+git add prototype/package.json prototype/package-lock.json prototype/tsconfig.json prototype/index.html prototype/vite.config.ts prototype/src/main.tsx prototype/src/App.tsx prototype/src/test/setup.ts prototype/src/data prototype/src/library/libraryStore.ts prototype/src/library/libraryStore.test.ts
+git commit -m "refactor: migrate prototype to typescript"
 ```
 
 ### Task 2: 实现可持久化的 `useLibrary`
 
 **Files:**
-- Create: `prototype/src/library/useLibrary.js`
-- Create: `prototype/src/library/useLibrary.test.jsx`
+- Create: `prototype/src/library/useLibrary.ts`
+- Create: `prototype/src/library/useLibrary.test.tsx`
 
 - [ ] **Step 1: 写 Hook 失败测试**
 
-```jsx
-// prototype/src/library/useLibrary.test.jsx
+```tsx
+// prototype/src/library/useLibrary.test.tsx
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";
 import { DEFAULT_LIBRARY_STATE } from "../data/demoBooks.js";
@@ -293,21 +423,23 @@ describe("useLibrary", () => {
 
 - [ ] **Step 2: 运行 Hook 测试确认失败**
 
-Run: `cd prototype && npm test -- src/library/useLibrary.test.jsx`
+Run: `cd prototype && npm test -- src/library/useLibrary.test.tsx`
 
-Expected: FAIL，`useLibrary.js` 不存在。
+Expected: FAIL，`useLibrary.ts` 不存在。
 
 - [ ] **Step 3: 实现 Hook**
 
-```js
-// prototype/src/library/useLibrary.js
+```ts
+// prototype/src/library/useLibrary.ts
 import { useEffect, useMemo, useState } from "react";
 import { DEFAULT_LIBRARY_STATE } from "../data/demoBooks.js";
+import type { LibrarySnapshot, LocalBook } from "../data/demoBooks.js";
 import { createImportedBook, parseLibraryState } from "./libraryStore.js";
 
 export const STORAGE_KEY = "scope.prototype.library.v1";
+type LibraryState = LibrarySnapshot & { notice: string };
 
-function loadInitialState() {
+function loadInitialState(): LibraryState {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return { ...DEFAULT_LIBRARY_STATE, notice: "" };
@@ -319,7 +451,7 @@ function loadInitialState() {
 }
 
 export function useLibrary() {
-  const [state, setState] = useState(loadInitialState);
+  const [state, setState] = useState<LibraryState>(loadInitialState);
   const currentBook = useMemo(() => state.books.find((book) => book.id === state.currentBookId) ?? null, [state.books, state.currentBookId]);
 
   useEffect(() => {
@@ -330,9 +462,9 @@ export function useLibrary() {
     }
   }, [state.books, state.currentBookId]);
 
-  const selectBook = (id) => setState((value) => ({ ...value, currentBookId: id, books: value.books.map((book) => book.id === id ? { ...book, lastReadAt: new Date().toISOString() } : book) }));
-  const removeBook = (id) => setState((value) => ({ ...value, books: value.books.filter((book) => book.id !== id), currentBookId: value.currentBookId === id ? null : value.currentBookId }));
-  const importBook = (file) => {
+  const selectBook = (id: string): void => setState((value) => ({ ...value, currentBookId: id, books: value.books.map((book) => book.id === id ? { ...book, lastReadAt: new Date().toISOString() } : book) }));
+  const removeBook = (id: string): void => setState((value) => ({ ...value, books: value.books.filter((book) => book.id !== id), currentBookId: value.currentBookId === id ? null : value.currentBookId }));
+  const importBook = (file: Pick<File, "name">): LocalBook => {
     const book = createImportedBook(file);
     if (state.books.some((item) => item.id === book.id)) throw new Error("这本图书已经存在");
     setState((value) => ({ ...value, books: [book, ...value.books], currentBookId: book.id }));
@@ -341,31 +473,33 @@ export function useLibrary() {
 
   return { ...state, currentBook, selectBook, removeBook, importBook, clearNotice: () => setState((value) => ({ ...value, notice: "" })) };
 }
+
+export type LibraryController = ReturnType<typeof useLibrary>;
 ```
 
 - [ ] **Step 4: 运行 Hook 测试确认通过**
 
-Run: `cd prototype && npm test -- src/library/useLibrary.test.jsx`
+Run: `cd prototype && npm test -- src/library/useLibrary.test.tsx && npm run typecheck`
 
-Expected: PASS，2 tests passed。
+Expected: PASS，2 tests passed；TypeScript 0 errors。
 
 - [ ] **Step 5: 提交 Hook**
 
 ```bash
-git add prototype/src/library/useLibrary.js prototype/src/library/useLibrary.test.jsx
+git add prototype/src/library/useLibrary.ts prototype/src/library/useLibrary.test.tsx
 git commit -m "feat: persist prototype library state"
 ```
 
 ### Task 3: 增加 History API 路由
 
 **Files:**
-- Create: `prototype/src/routing/usePathname.js`
-- Create: `prototype/src/routing/usePathname.test.jsx`
+- Create: `prototype/src/routing/usePathname.ts`
+- Create: `prototype/src/routing/usePathname.test.tsx`
 
 - [ ] **Step 1: 写路由失败测试**
 
-```jsx
-// prototype/src/routing/usePathname.test.jsx
+```tsx
+// prototype/src/routing/usePathname.test.tsx
 import { act, renderHook } from "@testing-library/react";
 import { expect, it } from "vitest";
 import { usePathname } from "./usePathname.js";
@@ -385,14 +519,14 @@ it("navigates and responds to popstate", () => {
 
 - [ ] **Step 2: 运行测试确认失败**
 
-Run: `cd prototype && npm test -- src/routing/usePathname.test.jsx`
+Run: `cd prototype && npm test -- src/routing/usePathname.test.tsx`
 
 Expected: FAIL，Hook 未定义。
 
 - [ ] **Step 3: 实现路由 Hook**
 
-```js
-// prototype/src/routing/usePathname.js
+```ts
+// prototype/src/routing/usePathname.ts
 import { useEffect, useState } from "react";
 
 export function usePathname() {
@@ -402,7 +536,7 @@ export function usePathname() {
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);
   }, []);
-  const navigate = (nextPath) => {
+  const navigate = (nextPath: string): void => {
     if (nextPath === window.location.pathname) return;
     window.history.pushState({}, "", nextPath);
     setPathname(nextPath);
@@ -413,9 +547,9 @@ export function usePathname() {
 
 - [ ] **Step 4: 运行路由测试确认通过**
 
-Run: `cd prototype && npm test -- src/routing/usePathname.test.jsx`
+Run: `cd prototype && npm test -- src/routing/usePathname.test.tsx && npm run typecheck`
 
-Expected: PASS，1 test passed。
+Expected: PASS，1 test passed；TypeScript 0 errors。
 
 - [ ] **Step 5: 提交路由 Hook**
 
@@ -427,44 +561,80 @@ git commit -m "feat: add lightweight library routing"
 ### Task 4: 拆分阅读页并实现当前图书切换器
 
 **Files:**
-- Create: `prototype/src/components/AppHeader.jsx`
-- Create: `prototype/src/components/CurrentBookSwitcher.jsx`
-- Create: `prototype/src/pages/ReaderPage.jsx`
-- Modify: `prototype/src/App.jsx:1-240`
+- Create: `prototype/src/components/AppHeader.tsx`
+- Create: `prototype/src/components/CurrentBookSwitcher.tsx`
+- Create: `prototype/src/pages/ReaderPage.tsx`
+- Modify: `prototype/src/App.tsx:1-240`
 
 - [ ] **Step 1: 将现有正文和章节树移动到 `ReaderPage`**
 
-`ReaderPage` 接口固定为：
+迁移前先执行 `rg -n 'const parts|const paragraphs|function TreeGroup|const \[activeChapter|const selectChapter|<main id="top"|drawer-backdrop' prototype/src/App.tsx`，确认下面七个结构锚点均存在且顺序一致。随后把以下确定范围移入 `prototype/src/pages/ReaderPage.tsx`：
 
-```jsx
-export function ReaderPage({ currentBook, onOpenLibrary }) {
-  // 保留现有 activeChapter、outlineOpen、parts、paragraphs 和 TreeGroup。
-  // book-meta 改为 currentBook 的 title、author、coverUrl、progress。
-  return <main id="top" className="reader-grid" data-testid="reader-grid">{/* existing article + outline */}</main>;
+- 从 `const parts` 到 `TreeGroup` 函数闭合花括号：`parts`、`paragraphs`、相关类型与 `TreeGroup`；
+- 从 `const [activeChapter` 到 `selectChapter` 函数闭合花括号：`activeChapter`、`outlineOpen`、`articleRef`、`chapter` 与 `selectChapter`，不移动夹在其中的 `aboutOpen` 和 `fileInputRef`；
+- 从 `<main id="top" className="reader-grid"` 到紧随其后的 `drawer-backdrop` 条件渲染闭合花括号：正文列、章节树列与移动端遮罩。
+
+删除迁移范围内对顶栏状态 `aboutOpen`、文件输入 `fileInputRef` 和顶栏图标的引用。保留原正文、目录 DOM 顺序、类名、测试 ID 与章节切换逻辑，不改布局行为。`ReaderPage` 的类型边界及空状态固定为：
+
+```tsx
+import type { LocalBook } from "../data/demoBooks.js";
+
+type ReaderPageProps = {
+  currentBook: LocalBook | null;
+  onOpenLibrary: () => void;
+};
+```
+
+函数签名使用 `export function ReaderPage({ currentBook, onOpenLibrary }: ReaderPageProps)`。在迁移后的状态声明之前加入唯一的空状态分支：
+
+```tsx
+if (!currentBook) {
+  return (
+    <main className="reader-empty">
+      <h1>还没有打开图书</h1>
+      <button type="button" onClick={onOpenLibrary}>前往图书管理</button>
+    </main>
+  );
 }
 ```
 
-无当前图书时返回管理入口：
+在迁移后的 `.book-meta` 中只替换以下四个值，其余结构不变：
 
-```jsx
-if (!currentBook) {
-  return <main className="reader-empty"><h1>还没有打开图书</h1><button type="button" onClick={onOpenLibrary}>前往图书管理</button></main>;
-}
+```tsx
+{currentBook.coverUrl ? (
+  <img src={currentBook.coverUrl} alt={`《${currentBook.title}》封面`} />
+) : (
+  <div className="cover-placeholder" aria-hidden="true">{currentBook.title.slice(0, 1)}</div>
+)}
+<div>
+  <h2>{currentBook.title}</h2>
+  <p>{currentBook.author}</p>
+  <p>本地文件：{currentBook.title}.epub</p>
+  <p>已读 {currentBook.progress}%</p>
+</div>
 ```
 
 - [ ] **Step 2: 实现当前图书切换器**
 
-```jsx
-// prototype/src/components/CurrentBookSwitcher.jsx
+```tsx
+// prototype/src/components/CurrentBookSwitcher.tsx
 import { CaretDown, FileArrowUp } from "@phosphor-icons/react";
 import { useEffect, useRef, useState } from "react";
+import type { LocalBook } from "../data/demoBooks.js";
 
-export function CurrentBookSwitcher({ currentBook, recentBooks, onSelect, onImport }) {
+type CurrentBookSwitcherProps = {
+  currentBook: LocalBook | null;
+  recentBooks: LocalBook[];
+  onSelect: (id: string) => void;
+  onImport: () => void;
+};
+
+export function CurrentBookSwitcher({ currentBook, recentBooks, onSelect, onImport }: CurrentBookSwitcherProps) {
   const [open, setOpen] = useState(false);
-  const rootRef = useRef(null);
+  const rootRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    const close = (event) => !rootRef.current?.contains(event.target) && setOpen(false);
-    const escape = (event) => event.key === "Escape" && setOpen(false);
+    const close = (event: PointerEvent) => !rootRef.current?.contains(event.target as Node) && setOpen(false);
+    const escape = (event: KeyboardEvent) => event.key === "Escape" && setOpen(false);
     document.addEventListener("pointerdown", close);
     document.addEventListener("keydown", escape);
     return () => { document.removeEventListener("pointerdown", close); document.removeEventListener("keydown", escape); };
@@ -486,15 +656,24 @@ export function CurrentBookSwitcher({ currentBook, recentBooks, onSelect, onImpo
 
 - [ ] **Step 3: 实现全局顶栏**
 
-```jsx
-// prototype/src/components/AppHeader.jsx
-import { CurrentBookSwitcher } from "./CurrentBookSwitcher.jsx";
+```tsx
+// prototype/src/components/AppHeader.tsx
+import { CurrentBookSwitcher } from "./CurrentBookSwitcher.js";
+import type { LibraryController } from "../library/useLibrary.js";
 
-export function AppHeader({ pathname, library, onNavigate, onImport, onAbout }) {
+type AppHeaderProps = {
+  pathname: string;
+  library: LibraryController;
+  onNavigate: (path: string) => void;
+  onImport: () => void;
+  onAbout: () => void;
+};
+
+export function AppHeader({ pathname, library, onNavigate, onImport, onAbout }: AppHeaderProps) {
   const recentBooks = [...library.books].sort((a, b) => (b.lastReadAt ?? "").localeCompare(a.lastReadAt ?? "")).slice(0, 5);
   return <header className="topbar"><div className="topbar-inner">
     <button className="brand" type="button" onClick={() => onNavigate("/")}>Scope</button>
-    <CurrentBookSwitcher currentBook={library.currentBook} recentBooks={recentBooks} onSelect={(id) => { library.selectBook(id); onNavigate("/"); }} onImport={onImport} />
+    <CurrentBookSwitcher currentBook={library.currentBook} recentBooks={recentBooks} onSelect={(id: string) => { library.selectBook(id); onNavigate("/"); }} onImport={onImport} />
     <nav className="top-actions" aria-label="页面操作">
       <button type="button" aria-current={pathname === "/library" ? "page" : undefined} onClick={() => onNavigate("/library")}>图书管理</button>
       <button type="button" onClick={onAbout}>关于</button>
@@ -505,17 +684,16 @@ export function AppHeader({ pathname, library, onNavigate, onImport, onAbout }) 
 
 - [ ] **Step 4: 重新组合 `App`**
 
-```jsx
+```tsx
 export function App() {
   const library = useLibrary();
   const { pathname, navigate } = usePathname();
-  const fileInputRef = useRef(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [aboutOpen, setAboutOpen] = useState(false);
-  const [pendingDeleteBookId, setPendingDeleteBookId] = useState(null);
   return <>
     <AppHeader pathname={pathname} library={library} onNavigate={navigate} onImport={() => fileInputRef.current?.click()} onAbout={() => setAboutOpen(true)} />
     <input ref={fileInputRef} className="visually-hidden" type="file" accept=".epub" />
-    {pathname === "/library" ? <LibraryPage library={library} onOpen={(id) => { library.selectBook(id); navigate("/"); }} onRequestDelete={setPendingDeleteBookId} onImport={() => fileInputRef.current?.click()} /> : <ReaderPage currentBook={library.currentBook} onOpenLibrary={() => navigate("/library")} />}
+    {pathname === "/library" ? <main className="library-page"><h1>图书管理</h1></main> : <ReaderPage currentBook={library.currentBook} onOpenLibrary={() => navigate("/library")} />}
   </>;
 }
 ```
@@ -527,32 +705,34 @@ Run:
 ```bash
 cd prototype
 npm test
+npm run typecheck
 npm run build
 ```
 
-Expected: 所有测试 PASS；Vite build exit 0。
+Expected: 所有测试 PASS；TypeScript 0 errors；Vite build exit 0。
 
 - [ ] **Step 6: 提交顶栏与阅读页拆分**
 
 ```bash
-git add prototype/src/App.jsx prototype/src/components prototype/src/pages/ReaderPage.jsx
+git add prototype/src/App.tsx prototype/src/components prototype/src/pages/ReaderPage.tsx
 git commit -m "feat: replace search with current book switcher"
 ```
 
 ### Task 5: 实现图书管理页搜索、筛选、排序和响应式表格
 
 **Files:**
-- Create: `prototype/src/pages/LibraryPage.jsx`
-- Create: `prototype/src/pages/LibraryPage.test.jsx`
+- Create: `prototype/src/pages/LibraryPage.tsx`
+- Create: `prototype/src/pages/LibraryPage.test.tsx`
+- Modify: `prototype/src/App.tsx`
 
 - [ ] **Step 1: 写管理页失败测试**
 
-```jsx
-// prototype/src/pages/LibraryPage.test.jsx
+```tsx
+// prototype/src/pages/LibraryPage.test.tsx
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { DEMO_BOOKS } from "../data/demoBooks.js";
-import { LibraryPage } from "./LibraryPage.jsx";
+import { LibraryPage } from "./LibraryPage.js";
 
 const library = { books: DEMO_BOOKS };
 
@@ -579,22 +759,31 @@ describe("LibraryPage", () => {
 
 - [ ] **Step 2: 运行测试确认失败**
 
-Run: `cd prototype && npm test -- src/pages/LibraryPage.test.jsx`
+Run: `cd prototype && npm test -- src/pages/LibraryPage.test.tsx`
 
-Expected: FAIL，`LibraryPage.jsx` 不存在。
+Expected: FAIL，`LibraryPage.tsx` 不存在。
 
 - [ ] **Step 3: 实现管理页**
 
-```jsx
-// prototype/src/pages/LibraryPage.jsx
+```tsx
+// prototype/src/pages/LibraryPage.tsx
 import { useMemo, useState } from "react";
 import { FileArrowUp, MagnifyingGlass, Trash } from "@phosphor-icons/react";
 import { filterAndSortBooks } from "../library/libraryStore.js";
+import type { LibraryController } from "../library/useLibrary.js";
+import type { FormatFilter, SortBy } from "../data/demoBooks.js";
 
-export function LibraryPage({ library, onOpen, onRequestDelete, onImport }) {
+type LibraryPageProps = {
+  library: Pick<LibraryController, "books">;
+  onOpen: (id: string) => void;
+  onRequestDelete: (id: string) => void;
+  onImport: () => void;
+};
+
+export function LibraryPage({ library, onOpen, onRequestDelete, onImport }: LibraryPageProps) {
   const [query, setQuery] = useState("");
-  const [formatFilter, setFormatFilter] = useState("ALL");
-  const [sortBy, setSortBy] = useState("LAST_READ_DESC");
+  const [formatFilter, setFormatFilter] = useState<FormatFilter>("ALL");
+  const [sortBy, setSortBy] = useState<SortBy>("LAST_READ_DESC");
   const books = useMemo(() => filterAndSortBooks(library.books, { query, formatFilter, sortBy }), [library.books, query, formatFilter, sortBy]);
   const clear = () => { setQuery(""); setFormatFilter("ALL"); setSortBy("LAST_READ_DESC"); };
 
@@ -604,8 +793,8 @@ export function LibraryPage({ library, onOpen, onRequestDelete, onImport }) {
     <header className="library-title"><div><h1>图书管理</h1><p>{library.books.length} 本本地图书</p></div></header>
     <section className="library-tools" aria-label="筛选图书">
       <label className="library-search"><MagnifyingGlass size={17} /><span className="visually-hidden">搜索图书</span><input aria-label="搜索图书" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索书名或作者" /></label>
-      <label><span className="visually-hidden">格式</span><select aria-label="格式" value={formatFilter} onChange={(event) => setFormatFilter(event.target.value)}><option value="ALL">全部格式</option><option value="EPUB">EPUB</option></select></label>
-      <label><span className="visually-hidden">排序</span><select aria-label="排序" value={sortBy} onChange={(event) => setSortBy(event.target.value)}><option value="LAST_READ_DESC">最近阅读</option><option value="IMPORTED_DESC">最近导入</option><option value="TITLE_ASC">书名</option></select></label>
+      <label><span className="visually-hidden">格式</span><select aria-label="格式" value={formatFilter} onChange={(event) => setFormatFilter(event.target.value as FormatFilter)}><option value="ALL">全部格式</option><option value="EPUB">EPUB</option></select></label>
+      <label><span className="visually-hidden">排序</span><select aria-label="排序" value={sortBy} onChange={(event) => setSortBy(event.target.value as SortBy)}><option value="LAST_READ_DESC">最近阅读</option><option value="IMPORTED_DESC">最近导入</option><option value="TITLE_ASC">书名</option></select></label>
       <button className="primary-button" type="button" onClick={onImport}><FileArrowUp size={17} />导入图书</button>
     </section>
     {books.length === 0 ? <section className="no-results"><h2>没有匹配的图书</h2><button type="button" onClick={clear}>清除条件</button></section> : <div className="book-table" role="table" aria-label="本地图书">
@@ -616,29 +805,57 @@ export function LibraryPage({ library, onOpen, onRequestDelete, onImport }) {
 }
 ```
 
-- [ ] **Step 4: 运行管理页测试确认通过**
+- [ ] **Step 4: 在 `App.tsx` 接入管理页**
 
-Run: `cd prototype && npm test -- src/pages/LibraryPage.test.jsx`
+增加导入：
 
-Expected: PASS，2 tests passed。
+```tsx
+import { LibraryPage } from "./pages/LibraryPage.js";
+```
 
-- [ ] **Step 5: 提交管理页**
+将 Task 4 的管理页路由壳替换为：
+
+```tsx
+{pathname === "/library" ? (
+  <LibraryPage
+    library={library}
+    onOpen={(id: string) => {
+      library.selectBook(id);
+      navigate("/");
+    }}
+    onRequestDelete={() => undefined}
+    onImport={() => fileInputRef.current?.click()}
+  />
+) : (
+  <ReaderPage currentBook={library.currentBook} onOpenLibrary={() => navigate("/library")} />
+)}
+```
+
+此时删除按钮暂不改变状态；Task 6 在确认弹窗存在后统一接线，避免无确认直接删除。
+
+- [ ] **Step 5: 运行管理页测试确认通过**
+
+Run: `cd prototype && npm test -- src/pages/LibraryPage.test.tsx && npm run typecheck && npm run build`
+
+Expected: PASS，2 tests passed；TypeScript 0 errors；Vite build exit 0。
+
+- [ ] **Step 6: 提交管理页**
 
 ```bash
-git add prototype/src/pages/LibraryPage.jsx prototype/src/pages/LibraryPage.test.jsx
+git add prototype/src/App.tsx prototype/src/pages/LibraryPage.tsx prototype/src/pages/LibraryPage.test.tsx
 git commit -m "feat: add searchable local book library"
 ```
 
 ### Task 6: 接通导入、重复校验、删除确认与提示
 
 **Files:**
-- Create: `prototype/src/components/ConfirmDialog.jsx`
-- Modify: `prototype/src/App.jsx`
-- Modify: `prototype/src/pages/LibraryPage.test.jsx`
+- Create: `prototype/src/components/ConfirmDialog.tsx`
+- Modify: `prototype/src/App.tsx`
+- Modify: `prototype/src/pages/LibraryPage.test.tsx`
 
 - [ ] **Step 1: 补充删除请求测试**
 
-```jsx
+```tsx
 it("requests deletion with the selected book id", () => {
   const onRequestDelete = vi.fn();
   render(<LibraryPage library={library} onOpen={vi.fn()} onRequestDelete={onRequestDelete} onImport={vi.fn()} />);
@@ -649,11 +866,18 @@ it("requests deletion with the selected book id", () => {
 
 - [ ] **Step 2: 实现确认弹窗**
 
-```jsx
-// prototype/src/components/ConfirmDialog.jsx
+```tsx
+// prototype/src/components/ConfirmDialog.tsx
 import { X } from "@phosphor-icons/react";
+import type { LocalBook } from "../data/demoBooks.js";
 
-export function ConfirmDialog({ book, onCancel, onConfirm }) {
+type ConfirmDialogProps = {
+  book: LocalBook | null;
+  onCancel: () => void;
+  onConfirm: () => void;
+};
+
+export function ConfirmDialog({ book, onCancel, onConfirm }: ConfirmDialogProps) {
   if (!book) return null;
   return <div className="dialog-backdrop" role="presentation" onMouseDown={onCancel}>
     <section className="dialog" role="alertdialog" aria-modal="true" aria-labelledby="delete-title" onMouseDown={(event) => event.stopPropagation()}>
@@ -668,11 +892,12 @@ export function ConfirmDialog({ book, onCancel, onConfirm }) {
 
 - [ ] **Step 3: 接通文件输入与错误提示**
 
-在 `App.jsx` 中增加：
+在 `App.tsx` 的 React import 后增加 `import type { ChangeEvent } from "react";`，并增加：
 
-```jsx
+```tsx
 const [message, setMessage] = useState("");
-const handleImport = (event) => {
+const [pendingDeleteBookId, setPendingDeleteBookId] = useState<string | null>(null);
+const handleImport = (event: ChangeEvent<HTMLInputElement>): void => {
   const file = event.target.files?.[0];
   event.target.value = "";
   if (!file) return;
@@ -688,15 +913,25 @@ const handleImport = (event) => {
 
 文件输入改为：
 
-```jsx
+```tsx
 <input ref={fileInputRef} className="visually-hidden" type="file" accept=".epub,application/epub+zip" onChange={handleImport} />
 ```
 
+把 `LibraryPage` 的临时 `onRequestDelete={() => undefined}` 替换为 `onRequestDelete={setPendingDeleteBookId}`。
+
 删除确认接线：
 
-```jsx
+```tsx
 const pendingDeleteBook = library.books.find((book) => book.id === pendingDeleteBookId) ?? null;
-<ConfirmDialog book={pendingDeleteBook} onCancel={() => setPendingDeleteBookId(null)} onConfirm={() => { library.removeBook(pendingDeleteBook.id); setMessage(`已删除《${pendingDeleteBook.title}》`); setPendingDeleteBookId(null); navigate("/library"); }} />
+const confirmDelete = (): void => {
+  if (!pendingDeleteBook) return;
+  library.removeBook(pendingDeleteBook.id);
+  setMessage(`已删除《${pendingDeleteBook.title}》`);
+  setPendingDeleteBookId(null);
+  navigate("/library");
+};
+
+<ConfirmDialog book={pendingDeleteBook} onCancel={() => setPendingDeleteBookId(null)} onConfirm={confirmDelete} />
 <div className="status-message" role="status" aria-live="polite">{message || library.notice}</div>
 ```
 
@@ -707,15 +942,16 @@ Run:
 ```bash
 cd prototype
 npm test
+npm run typecheck
 npm run build
 ```
 
-Expected: 所有测试 PASS；Vite build exit 0。
+Expected: 所有测试 PASS；TypeScript 0 errors；Vite build exit 0。
 
 - [ ] **Step 5: 提交导入与删除流程**
 
 ```bash
-git add prototype/src/App.jsx prototype/src/components/ConfirmDialog.jsx prototype/src/pages/LibraryPage.test.jsx
+git add prototype/src/App.tsx prototype/src/components/ConfirmDialog.tsx prototype/src/pages/LibraryPage.test.tsx
 git commit -m "feat: add library import and delete flows"
 ```
 
@@ -807,10 +1043,11 @@ Run:
 ```bash
 cd prototype
 npm test
+npm run typecheck
 npm run build
 ```
 
-Expected: 全部测试通过；Vite build exit 0。
+Expected: 全部测试通过；TypeScript 0 errors；Vite build exit 0。
 
 - [ ] **Step 5: 提交视觉与响应式**
 
@@ -848,7 +1085,7 @@ Run: `cd prototype && npm run dev`
 
 在浏览器读取：
 
-```js
+```ts
 const article = document.querySelector('[data-testid="article-column"]').getBoundingClientRect();
 const outline = document.querySelector('[data-testid="outline-column"]').getBoundingClientRect();
 ({ delta: outline.left - article.right, gap: getComputedStyle(document.querySelector('[data-testid="reader-grid"]')).columnGap });
@@ -885,12 +1122,13 @@ Run:
 ```bash
 cd prototype
 npm test
+npm run typecheck
 npm run build
 rg -n "final result: passed" design-qa.md
 git -C .. diff --check
 ```
 
-Expected: 测试 0 失败；构建成功；QA 为 passed；`git diff --check` 无输出。
+Expected: 测试 0 失败；TypeScript 0 errors；构建成功；QA 为 passed；`git diff --check` 无输出。
 
 - [ ] **Step 6: 提交 QA 与文档**
 
@@ -903,5 +1141,5 @@ git commit -m "docs: verify local book library prototype"
 
 - 规格覆盖：输入框替换、当前图书切换、`/library`、搜索、筛选、排序、导入、删除、异常、响应式和双栏回归均有对应任务。
 - 占位符扫描：计划无占位标记或未定义的错误处理步骤。
-- 类型一致性：`LocalBook` 字段、筛选值、排序值、存储键与设计文档一致。
+- 类型一致性：严格 TypeScript 开启，`LocalBook`、组件 Props、筛选值、排序值、存储键与设计文档一致。
 - 范围控制：不加入路由库、元数据编辑、批量操作、封面修改、云同步或真实 EPUB 解析。
