@@ -6,14 +6,28 @@ export class PublicationEngineRegistry {
   constructor(private readonly engines: readonly PublicationEngine[]) {}
 
   async select(source: PublicationSource): Promise<PublicationEngine> {
-    const confidences = await Promise.all(this.engines.map((engine) => engine.canOpen(source)));
+    const results = await Promise.all(this.engines.map(async (engine) => {
+      try {
+        return { engine, confidence: await engine.canOpen(source), failed: false as const };
+      } catch {
+        return { engine, failed: true as const };
+      }
+    }));
+    const failureCount = results.filter(({ failed }) => failed).length;
+
+    if (failureCount > 0 && failureCount === this.engines.length) {
+      throw new ScopeException([
+        issue("ENGINE_LOAD_FAILED", "DETECT_FORMAT", true, { failureCount }),
+      ]);
+    }
+
     let selected: PublicationEngine | undefined;
     let highestConfidence = 0;
 
-    for (const [index, confidence] of confidences.entries()) {
-      if (confidence > highestConfidence) {
-        highestConfidence = confidence;
-        selected = this.engines[index];
+    for (const result of results) {
+      if (!result.failed && result.confidence > highestConfidence) {
+        highestConfidence = result.confidence;
+        selected = result.engine;
       }
     }
 

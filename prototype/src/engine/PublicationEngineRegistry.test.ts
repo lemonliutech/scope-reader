@@ -12,9 +12,13 @@ const source: PublicationSource = {
 };
 
 function fakeEngine(confidence: 0 | 20 | 100): PublicationEngine {
+  return engineWithCanOpen(async () => confidence);
+}
+
+function engineWithCanOpen(canOpen: PublicationEngine["canOpen"]): PublicationEngine {
   return {
     format: "EPUB",
-    canOpen: async () => confidence,
+    canOpen,
     inspect: async () => {
       throw new Error("not used");
     },
@@ -43,6 +47,68 @@ describe("PublicationEngineRegistry", () => {
       expect(error).toBeInstanceOf(ScopeException);
       expect((error as ScopeException).issues[0]?.code).toBe("FORMAT_ENGINE_NOT_FOUND");
     }
+  });
+
+  it("isolates an engine that throws synchronously during detection", async () => {
+    const throwingEngine = engineWithCanOpen(() => {
+      throw new Error("sync detection failure");
+    });
+    const registry = new PublicationEngineRegistry([throwingEngine, fakeEngine(0)]);
+
+    await expect(registry.select(source)).rejects.toMatchObject({
+      issues: [{ code: "FORMAT_ENGINE_NOT_FOUND" }],
+    });
+  });
+
+  it("isolates an engine whose detection promise rejects", async () => {
+    const rejectingEngine = engineWithCanOpen(async () => {
+      throw new Error("async detection failure");
+    });
+    const registry = new PublicationEngineRegistry([rejectingEngine, fakeEngine(0)]);
+
+    await expect(registry.select(source)).rejects.toMatchObject({
+      issues: [{ code: "FORMAT_ENGINE_NOT_FOUND" }],
+    });
+  });
+
+  it("selects an available engine when other detections fail", async () => {
+    const throwingEngine = engineWithCanOpen(() => {
+      throw new Error("sync detection failure");
+    });
+    const rejectingEngine = engineWithCanOpen(async () => {
+      throw new Error("async detection failure");
+    });
+    const availableEngine = fakeEngine(20);
+    const registry = new PublicationEngineRegistry([
+      throwingEngine,
+      availableEngine,
+      rejectingEngine,
+    ]);
+
+    await expect(registry.select(source)).resolves.toBe(availableEngine);
+  });
+
+  it("reports ENGINE_LOAD_FAILED with the failure count when every detection fails", async () => {
+    const registry = new PublicationEngineRegistry([
+      engineWithCanOpen(() => {
+        throw new Error("sync detection failure");
+      }),
+      engineWithCanOpen(async () => {
+        throw new Error("async detection failure");
+      }),
+    ]);
+
+    await expect(registry.select(source)).rejects.toMatchObject({
+      issues: [{ code: "ENGINE_LOAD_FAILED", details: { failureCount: 2 } }],
+    });
+  });
+
+  it("keeps registration order when engines have equal confidence", async () => {
+    const firstEngine = fakeEngine(100);
+    const secondEngine = fakeEngine(100);
+    const registry = new PublicationEngineRegistry([firstEngine, secondEngine]);
+
+    await expect(registry.select(source)).resolves.toBe(firstEngine);
   });
 
   it("exposes the format-independent session and engine signatures", () => {
