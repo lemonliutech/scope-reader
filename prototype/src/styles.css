@@ -979,13 +979,35 @@ a:hover {
   border-radius: 2px;
 }
 
-/* ── Chapter iframe ─────────────────────────────────────────────────────── */
+/* ── Chapter content (rendered directly in page DOM, no iframe) ─────────── */
 
-.chapter-frame {
-  width: 100%;
-  border: 0;
-  overflow: hidden;
+.chapter-content {
+  padding: 24px 0 48px;
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+
+.chapter-content img {
+  max-width: 100%;
+  height: auto;
   display: block;
+}
+
+.chapter-content a {
+  color: var(--link);
+}
+
+.chapter-content p,
+.chapter-content li {
+  orphans: 2;
+  widows: 2;
+}
+
+.chapter-content pre,
+.chapter-content code {
+  font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+  font-size: 0.875em;
+  overflow-x: auto;
 }
 
 .chapter-placeholder {

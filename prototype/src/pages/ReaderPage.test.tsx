@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type { ChapterDocument, PublicationInspection } from "../domain/publication";
 import { ReaderPage } from "./ReaderPage";
@@ -24,10 +24,13 @@ describe("ReaderPage", () => {
     expect(screen.getByText("还没有打开图书")).toBeInTheDocument();
   });
 
-  it("renders ChapterFrame when a chapter is provided", () => {
-    render(<ReaderPage publication={inspection} chapter={chapter} locator={null} temporary={false} onOpenTarget={vi.fn()} onOpenLibrary={vi.fn()} />);
-    expect(screen.getByTitle("Chapter 1")).toBeInTheDocument();
-    expect(screen.queryByText("故事的力量")).not.toBeInTheDocument();
+  it("renders ChapterFrame when a chapter is provided", async () => {
+    await act(async () => {
+      render(<ReaderPage publication={inspection} chapter={chapter} locator={null} temporary={false} onOpenTarget={vi.fn()} onOpenLibrary={vi.fn()} />);
+    });
+    // Chapter content is injected into a .chapter-content div (no iframe)
+    expect(document.querySelector(".chapter-content")).toBeInTheDocument();
+    expect(screen.getByText("real chapter content")).toBeInTheDocument();
   });
 
   it("shows a temporary notice when book cannot be saved", () => {
