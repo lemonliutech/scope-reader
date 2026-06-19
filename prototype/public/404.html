@@ -1,0 +1,14 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <script>
+      // GitHub Pages SPA redirect: rewrite path to query string so index.html can restore it
+      var path = window.location.pathname;
+      window.location.replace(
+        window.location.origin + '/scope-reader/?p=' + encodeURIComponent(path.replace('/scope-reader', ''))
+      );
+    </script>
+  </head>
+  <body></body>
+</html>
