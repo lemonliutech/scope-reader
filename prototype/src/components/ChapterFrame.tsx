@@ -6,13 +6,22 @@ type ChapterFrameProps = {
   preferences: ReaderPreferences;
   anchor: string | null;
   onExternalLink: (url: string) => void;
+  onInternalLink: (locator: string) => void;
 };
 
-export function ChapterFrame({ chapter, preferences, anchor, onExternalLink }: ChapterFrameProps) {
+export function ChapterFrame({ chapter, preferences, anchor, onExternalLink, onInternalLink }: ChapterFrameProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  // Keep a ref so the event-delegation handler always calls the latest version
+  // Keep refs so event-delegation handlers always call the latest version
   const onExternalLinkRef = useRef(onExternalLink);
   onExternalLinkRef.current = onExternalLink;
+  const onInternalLinkRef = useRef(onInternalLink);
+  onInternalLinkRef.current = onInternalLink;
+  // Keep anchor in a ref so the async HTML callback can read the latest value
+  const anchorRef = useRef(anchor);
+  anchorRef.current = anchor;
+  // Keep chapter baseUrl in a ref for the link handler
+  const chapterBaseUrlRef = useRef(chapter.baseUrl);
+  chapterBaseUrlRef.current = chapter.baseUrl;
 
   // Inject sanitized body HTML and scoped EPUB styles when the chapter changes
   useEffect(() => {
@@ -34,6 +43,17 @@ export function ChapterFrame({ chapter, preferences, anchor, onExternalLink }: C
 
       container.innerHTML = bodyHtml;
 
+      // Scroll to anchor (if any) or reset to top — must run after HTML is in the DOM
+      const currentAnchor = anchorRef.current;
+      if (currentAnchor) {
+        const el =
+          container.querySelector(`#${CSS.escape(currentAnchor)}`) ??
+          container.querySelector(`[name="${currentAnchor.replaceAll('"', '\\"')}"]`);
+        el?.scrollIntoView({ block: "start" });
+      } else {
+        window.scrollTo({ top: 0, behavior: "instant" });
+      }
+
       const allCss = [inlineStyles, fetchedCss].join("\n").trim();
       if (allCss) {
         styleEl = document.createElement("style");
@@ -51,26 +71,48 @@ export function ChapterFrame({ chapter, preferences, anchor, onExternalLink }: C
     };
   }, [chapter.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Scroll to anchor after chapter loads or anchor changes
+  // Scroll to anchor when anchor changes within the same chapter (HTML already in DOM)
   useEffect(() => {
     if (!anchor || !containerRef.current) return;
     const el =
       containerRef.current.querySelector(`#${CSS.escape(anchor)}`) ??
       containerRef.current.querySelector(`[name="${anchor.replaceAll('"', '\\"')}"]`);
     el?.scrollIntoView({ block: "start" });
-  }, [anchor, chapter.id]);
+  }, [anchor]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // External-link interception via event delegation (registered once)
+  // Link interception via event delegation (registered once)
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
     const handler = (event: MouseEvent) => {
-      const target = (event.target as Element | null)?.closest("[data-external-url]");
-      if (!target) return;
-      const url = target.getAttribute("data-external-url");
-      if (url) {
+      const anchor = (event.target as Element | null)?.closest("a");
+      if (!anchor) return;
+
+      // External link (set by parseChapter sanitisation)
+      const externalUrl = anchor.getAttribute("data-external-url");
+      if (externalUrl) {
         event.preventDefault();
-        onExternalLinkRef.current(url);
+        onExternalLinkRef.current(externalUrl);
+        return;
+      }
+
+      // Internal EPUB link — resolve relative href and navigate within reader
+      const href = anchor.getAttribute("href");
+      if (href && !isRemoteUrl(href) && !href.startsWith("mailto:") && !href.startsWith("#")) {
+        event.preventDefault();
+        const locator = resolveEpubLocator(href, chapterBaseUrlRef.current);
+        onInternalLinkRef.current(locator);
+        return;
+      }
+
+      // Same-page fragment link — scroll within current chapter
+      if (href?.startsWith("#")) {
+        event.preventDefault();
+        const fragment = href.slice(1);
+        const el =
+          container.querySelector(`#${CSS.escape(fragment)}`) ??
+          container.querySelector(`[name="${fragment.replaceAll('"', '\\"')}"]`);
+        el?.scrollIntoView({ block: "start" });
       }
     };
     container.addEventListener("click", handler);
@@ -142,4 +184,12 @@ function parseChapter(html: string): {
 
 function isRemoteUrl(url: string): boolean {
   return /^https?:\/\//i.test(url) || url.startsWith("//");
+}
+
+// Resolve a relative EPUB href against the current chapter's path (both relative to OPF dir)
+function resolveEpubLocator(href: string, chapterBaseUrl: string): string {
+  const fakeBase = `epub:///${chapterBaseUrl}`;
+  const resolved = new URL(href, fakeBase);
+  // pathname starts with "/", strip it; preserve hash fragment
+  return resolved.pathname.slice(1) + resolved.hash;
 }

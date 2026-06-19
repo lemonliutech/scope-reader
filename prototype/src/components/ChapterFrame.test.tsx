@@ -23,7 +23,7 @@ describe("ChapterFrame", () => {
           chapter={makeChapter("<p>Hello world</p>")}
           preferences={prefs}
           anchor={null}
-          onExternalLink={vi.fn()}
+          onExternalLink={vi.fn()} onInternalLink={vi.fn()}
         />,
       );
     });
@@ -38,7 +38,7 @@ describe("ChapterFrame", () => {
           chapter={makeChapter('<script>alert("xss")</script><p>Safe</p><form><input/></form>')}
           preferences={prefs}
           anchor={null}
-          onExternalLink={vi.fn()}
+          onExternalLink={vi.fn()} onInternalLink={vi.fn()}
         />,
       );
     });
@@ -56,7 +56,7 @@ describe("ChapterFrame", () => {
           )}
           preferences={prefs}
           anchor={null}
-          onExternalLink={vi.fn()}
+          onExternalLink={vi.fn()} onInternalLink={vi.fn()}
         />,
       );
     });
@@ -76,6 +76,7 @@ describe("ChapterFrame", () => {
           preferences={prefs}
           anchor={null}
           onExternalLink={onExternalLink}
+          onInternalLink={vi.fn()}
         />,
       );
     });

@@ -59,12 +59,8 @@ export class EpubEngineAdapter implements PublicationEngine {
 
   async canOpen(source: PublicationSource) {
     const preflight = preflightEpub(new Uint8Array(source.data));
-    // No issues at all → high confidence
-    if (!preflight.issues.some((item) => EPUB_CONTAINER_CODES.has(item.code))) return 100;
-    // Has some container issues but found a valid OPF package → still try
-    if (preflight.packagePath !== null) return 30;
-    // Unknown structure but looks like EPUB by name
-    return hasEpubExtension(source.fileName) ? 10 : 0;
+    const hasContainerIssue = preflight.issues.some((item) => EPUB_CONTAINER_CODES.has(item.code));
+    return !hasContainerIssue ? 100 : hasEpubExtension(source.fileName) ? 20 : 0;
   }
 
   async inspect(source: PublicationSource): Promise<PublicationInspection> {

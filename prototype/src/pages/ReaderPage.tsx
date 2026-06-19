@@ -30,7 +30,10 @@ function NavNode({ node, onSelect }: NavNodeProps) {
       <button
         type="button"
         className={hasChildren ? "tree-parent" : "tree-link"}
-        onClick={() => (hasChildren ? setOpen((v) => !v) : onSelect(node.target))}
+        onClick={() => {
+          onSelect(node.target);
+          if (hasChildren) setOpen((v) => !v);
+        }}
         aria-expanded={hasChildren ? open : undefined}
       >
         {node.label}
@@ -91,6 +94,7 @@ export function ReaderPage({ publication, chapter, locator, temporary, onOpenTar
               preferences={DEFAULT_PREFS}
               anchor={anchor}
               onExternalLink={(url) => window.open(url, "_blank", "noopener,noreferrer")}
+              onInternalLink={(locator) => handleSelect({ format: "EPUB", locator })}
             />
           ) : (
             <div className="chapter-placeholder">
