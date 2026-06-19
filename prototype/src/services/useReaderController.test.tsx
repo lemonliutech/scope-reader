@@ -7,6 +7,7 @@ import { useReaderController } from "./useReaderController";
 // Provide fresh IndexedDB per test.
 beforeEach(() => {
   globalThis.indexedDB = new IDBFactory();
+  localStorage.clear();
   vi.restoreAllMocks();
 });
 

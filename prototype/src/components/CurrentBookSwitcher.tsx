@@ -41,9 +41,6 @@ export function CurrentBookSwitcher({ currentBookId, books, onSelect, onImport }
         aria-haspopup="menu"
         onClick={() => setOpen((value) => !value)}
       >
-        <span className="cover-fallback" aria-hidden="true">
-          {currentBook?.metadata.title.slice(0, 1) ?? "书"}
-        </span>
         <span className="book-switcher-copy">
           <strong>{currentBook?.metadata.title ?? "选择一本图书"}</strong>
           <small>{currentBook ? "EPUB" : "从本地导入 EPUB"}</small>

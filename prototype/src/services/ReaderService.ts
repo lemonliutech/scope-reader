@@ -233,6 +233,9 @@ export class ReaderService {
     this.session = session;
     this.sessionBookId = bookId;
 
+    // Update last-opened timestamp (fire and forget)
+    this.repository.touchLastOpened(bookId).catch(() => {});
+
     return {
       bookId,
       inspection: bundle.publication.inspection,

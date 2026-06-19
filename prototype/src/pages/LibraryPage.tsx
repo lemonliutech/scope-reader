@@ -1,5 +1,6 @@
 import { FileArrowUp, MagnifyingGlass, Trash } from "@phosphor-icons/react";
 import { useMemo, useState } from "react";
+import { CoverImage } from "../components/CoverImage";
 import type { LibraryBook } from "../storage/schema";
 
 type FormatFilter = "ALL" | "EPUB";
@@ -127,13 +128,14 @@ export function LibraryPage({ books, onOpen, onRequestDelete, onImport }: Librar
           {filtered.map((book) => (
             <div className="book-row" role="row" key={book.bookId}>
               <div className="book-title-cell" role="cell">
-                <span className="library-cover" aria-hidden="true">
-                  {book.metadata.title.slice(0, 1)}
-                </span>
+                <CoverImage cover={book.metadata.cover} title={book.metadata.title} className="library-cover" />
                 <span>
                   <strong>{book.metadata.title}</strong>
                   <small>
                     {book.metadata.authors[0] ?? "未知作者"}
+                    {book.chapterCount > 0 && book.location.chapterIndex > 0 && (
+                      <> · {Math.min(100, Math.round((book.location.chapterIndex / book.chapterCount) * 100))}%</>
+                    )}
                     {book.temporary && (
                       <span className="book-temporary-badge"> · 本次进度无法保存</span>
                     )}

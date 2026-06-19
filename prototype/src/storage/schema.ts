@@ -41,6 +41,7 @@ export type LibraryBook = {
   size: number;
   metadata: BookMetadata;
   location: PublicationLocation;
+  chapterCount: number;
   importedAt: string;
   lastOpenedAt: string | null;
   temporary: boolean;
@@ -65,5 +66,6 @@ export interface LibraryRepository {
   listBooks(): Promise<LibraryBook[]>;
   loadBook(bookId: string): Promise<StoredBookBundle | null>;
   saveReadingState(state: StoredReadingState): Promise<void>;
+  touchLastOpened(bookId: string): Promise<void>;
   deleteBook(bookId: string): Promise<void>;
 }

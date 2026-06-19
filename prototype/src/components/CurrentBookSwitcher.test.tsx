@@ -10,6 +10,7 @@ function makeBook(bookId: string, title: string, author: string): LibraryBook {
     size: 1000,
     metadata: { title, authors: [author], language: null, description: null, cover: null },
     location: { format: "EPUB", locator: "", chapterIndex: 0, scrollRatio: 0 },
+    chapterCount: 0,
     importedAt: "2026-06-16T08:00:00.000Z",
     lastOpenedAt: "2026-06-18T00:00:00.000Z",
     temporary: false,

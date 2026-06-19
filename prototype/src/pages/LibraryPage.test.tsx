@@ -16,6 +16,7 @@ function makeBook(opts: { bookId: string; title: string; author?: string; lastOp
       cover: null,
     },
     location: { format: "EPUB", locator: "", chapterIndex: 0, scrollRatio: 0 },
+    chapterCount: 0,
     importedAt: opts.importedAt ?? "2026-06-16T08:00:00.000Z",
     lastOpenedAt: opts.lastOpenedAt ?? null,
     temporary: opts.temporary ?? false,

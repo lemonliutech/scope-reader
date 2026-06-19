@@ -33,6 +33,8 @@ export type ReaderController = {
   deleteBook: (bookId: string) => Promise<void>;
 };
 
+const LAST_BOOK_KEY = "scope:lastBookId";
+
 export function useReaderController(): ReaderController {
   const repoRef = useRef(new IndexedDbLibraryRepository());
   const serviceRef = useRef(
@@ -46,9 +48,37 @@ export function useReaderController(): ReaderController {
   const [books, setBooks] = useState<LibraryBook[]>([]);
   const [issues, setIssues] = useState<ScopeIssue[]>([]);
 
-  // Load library on mount
+  // Load library and restore last-opened book on mount
   useEffect(() => {
     repoRef.current.listBooks().then(setBooks).catch(() => {});
+
+    const lastBookId = localStorage.getItem(LAST_BOOK_KEY);
+    if (lastBookId) {
+      void (async () => {
+        try {
+          const pub = await serviceRef.current.openBook(lastBookId);
+          const restoreLocator = pub.location.locator || pub.inspection.readingOrder[0]?.target.locator;
+          const restoreTarget = restoreLocator ? { format: "EPUB" as const, locator: restoreLocator } : null;
+          let restoredChapter: ChapterDocument | null = null;
+          if (restoreTarget) {
+            try { restoredChapter = await serviceRef.current.loadChapter(restoreTarget); } catch { /* ignore */ }
+          }
+          setControllerState({
+            status: "ready",
+            bookId: pub.bookId,
+            inspection: pub.inspection,
+            location: serviceRef.current.getLocation() ?? pub.location,
+            chapter: restoredChapter,
+            temporary: pub.temporary,
+          });
+          const freshBooks = await repoRef.current.listBooks();
+          setBooks(freshBooks);
+        } catch {
+          localStorage.removeItem(LAST_BOOK_KEY);
+        }
+      })();
+    }
+
     return () => {
       serviceRef.current.close().catch(() => {});
     };
@@ -100,7 +130,10 @@ export function useReaderController(): ReaderController {
       temporary: result.temporary,
     });
 
-    if (!result.temporary) await refreshBooks();
+    if (!result.temporary) {
+      localStorage.setItem(LAST_BOOK_KEY, result.bookId);
+      await refreshBooks();
+    }
     return true;
   }, [refreshBooks]);
 
@@ -124,6 +157,7 @@ export function useReaderController(): ReaderController {
         }
       }
 
+      localStorage.setItem(LAST_BOOK_KEY, pub.bookId);
       setControllerState({
         status: "ready",
         bookId: pub.bookId,
@@ -156,6 +190,7 @@ export function useReaderController(): ReaderController {
 
   const deleteBook = useCallback(async (bookId: string) => {
     await repoRef.current.deleteBook(bookId);
+    if (localStorage.getItem(LAST_BOOK_KEY) === bookId) localStorage.removeItem(LAST_BOOK_KEY);
     setControllerState((prev) => {
       if (prev.status === "ready" && prev.bookId === bookId) return { status: "idle" };
       return prev;

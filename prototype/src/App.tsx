@@ -80,6 +80,7 @@ export function App() {
         <ReaderPage
           publication={controller.state.status === "ready" ? controller.state.inspection : null}
           chapter={controller.state.status === "ready" ? controller.state.chapter : null}
+          locator={controller.state.status === "ready" ? controller.state.location.locator : null}
           temporary={controller.state.status === "ready" ? controller.state.temporary : false}
           onOpenTarget={controller.openTarget}
           onOpenLibrary={() => navigate("/library")}

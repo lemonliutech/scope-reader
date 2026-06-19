@@ -95,6 +95,7 @@ export class IndexedDbLibraryRepository implements LibraryRepository {
             cover: null,
           },
           location: state?.location ?? { format: "EPUB", locator: "", chapterIndex: 0, scrollRatio: 0 },
+          chapterCount: pub?.inspection.readingOrder.length ?? 0,
           importedAt: book.importedAt,
           lastOpenedAt: book.lastOpenedAt,
           temporary: false,
@@ -130,6 +131,16 @@ export class IndexedDbLibraryRepository implements LibraryRepository {
     const db = await this.getDb();
     try {
       await db.put("readingStates", state);
+    } catch (error) {
+      throw mapStorageError(error, "WRITE_DATABASE");
+    }
+  }
+
+  async touchLastOpened(bookId: string): Promise<void> {
+    const db = await this.getDb();
+    try {
+      const book = await db.get("books", bookId);
+      if (book) await db.put("books", { ...book, lastOpenedAt: new Date().toISOString() });
     } catch (error) {
       throw mapStorageError(error, "WRITE_DATABASE");
     }

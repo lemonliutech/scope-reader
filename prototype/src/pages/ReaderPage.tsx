@@ -14,6 +14,7 @@ const DEFAULT_PREFS: ReaderPreferences = { fontSize: 16, lineHeight: 1.6, theme:
 type ReaderPageProps = {
   publication: PublicationInspection | null;
   chapter: ChapterDocument | null;
+  locator: string | null;
   temporary: boolean;
   onOpenTarget: (target: PublicationTarget) => void;
   onOpenLibrary: () => void;
@@ -45,8 +46,9 @@ function NavNode({ node, onSelect }: NavNodeProps) {
   );
 }
 
-export function ReaderPage({ publication, chapter, temporary, onOpenTarget, onOpenLibrary }: ReaderPageProps) {
+export function ReaderPage({ publication, chapter, locator, temporary, onOpenTarget, onOpenLibrary }: ReaderPageProps) {
   const [outlineOpen, setOutlineOpen] = useState(false);
+  const anchor = locator?.split("#")[1] ?? null;
 
   if (!publication) {
     return (
@@ -87,6 +89,7 @@ export function ReaderPage({ publication, chapter, temporary, onOpenTarget, onOp
             <ChapterFrame
               chapter={chapter}
               preferences={DEFAULT_PREFS}
+              anchor={anchor}
               onDispose={() => {}}
               onExternalLink={(url) => window.open(url, "_blank", "noopener,noreferrer")}
             />

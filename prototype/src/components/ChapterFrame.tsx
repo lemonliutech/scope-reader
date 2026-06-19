@@ -4,11 +4,12 @@ import type { ChapterDocument, ReaderPreferences } from "../domain/publication";
 type ChapterFrameProps = {
   chapter: ChapterDocument;
   preferences: ReaderPreferences;
+  anchor: string | null;
   onDispose: () => void;
   onExternalLink: (url: string) => void;
 };
 
-export function ChapterFrame({ chapter, preferences, onDispose, onExternalLink }: ChapterFrameProps) {
+export function ChapterFrame({ chapter, preferences, anchor, onDispose, onExternalLink }: ChapterFrameProps) {
   const ref = useRef<HTMLIFrameElement>(null);
 
   useEffect(() => onDispose, [onDispose]);
@@ -17,6 +18,12 @@ export function ChapterFrame({ chapter, preferences, onDispose, onExternalLink }
     () => buildSafeChapterDocument(chapter, preferences),
     [chapter, preferences],
   );
+
+  const scrollToAnchor = (id: string): void => {
+    const doc = ref.current?.contentDocument;
+    const el = doc?.getElementById(id) ?? doc?.querySelector(`[name="${id.replaceAll('"', '\\"')}"]`);
+    el?.scrollIntoView({ block: "start" });
+  };
 
   const resize = (): void => {
     const root = ref.current?.contentDocument?.documentElement;
@@ -49,6 +56,17 @@ export function ChapterFrame({ chapter, preferences, onDispose, onExternalLink }
     };
   }, [onExternalLink]);
 
+  // Scroll to anchor after the iframe document loads
+  const handleLoad = (): void => {
+    resize();
+    if (anchor) scrollToAnchor(anchor);
+  };
+
+  // Scroll when anchor changes without a full chapter reload (same file, different section)
+  useEffect(() => {
+    if (anchor) scrollToAnchor(anchor);
+  }, [anchor]); // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
     <iframe
       ref={ref}
@@ -56,7 +74,7 @@ export function ChapterFrame({ chapter, preferences, onDispose, onExternalLink }
       sandbox="allow-same-origin"
       title={chapter.title}
       srcDoc={srcDoc}
-      onLoad={resize}
+      onLoad={handleLoad}
       style={{ width: "100%", border: 0, overflow: "hidden", display: "block" }}
     />
   );

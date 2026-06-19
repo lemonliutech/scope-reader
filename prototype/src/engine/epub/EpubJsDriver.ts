@@ -111,7 +111,8 @@ export class EpubJsDriver {
   }
 
   private resolveSection(book: EpubBook, href: string): EpubSection {
-    const section = book.spine.get(href);
+    // book.spine.get may fail when href includes a fragment; strip it for lookup
+    const section = book.spine.get(href.split("#")[0] ?? href);
     if (section === null) {
       throw new ScopeException([
         issue("RESOURCE_MISSING", "LOAD_CHAPTER", true, { href: normalizeHref(href) }),
