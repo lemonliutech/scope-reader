@@ -67,7 +67,8 @@ export function ChapterFrame({ chapter, preferences, anchor, onExternalLink, onI
     return () => {
       cancelled = true;
       styleEl?.remove();
-      if (containerRef.current) containerRef.current.innerHTML = "";
+      // Do NOT clear innerHTML here — old content stays visible until new content is ready,
+      // preventing a blank flash between chapter switches.
     };
   }, [chapter.id]); // eslint-disable-line react-hooks/exhaustive-deps
 

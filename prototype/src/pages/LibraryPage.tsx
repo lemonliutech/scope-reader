@@ -8,6 +8,7 @@ type SortBy = "LAST_READ_DESC" | "IMPORTED_DESC" | "TITLE_ASC";
 
 type LibraryPageProps = {
   books: LibraryBook[];
+  booksLoaded: boolean;
   onOpen: (bookId: string) => void;
   onRequestDelete: (bookId: string) => void;
   onImport: () => void;
@@ -37,7 +38,7 @@ function readLabel(value: string | null): string {
   return new Intl.DateTimeFormat("zh-CN", { month: "short", day: "numeric" }).format(new Date(value));
 }
 
-export function LibraryPage({ books, onOpen, onRequestDelete, onImport }: LibraryPageProps) {
+export function LibraryPage({ books, booksLoaded, onOpen, onRequestDelete, onImport }: LibraryPageProps) {
   const [query, setQuery] = useState("");
   const [formatFilter, setFormatFilter] = useState<FormatFilter>("ALL");
   const [sortBy, setSortBy] = useState<SortBy>("LAST_READ_DESC");
@@ -52,6 +53,15 @@ export function LibraryPage({ books, onOpen, onRequestDelete, onImport }: Librar
     setFormatFilter("ALL");
     setSortBy("LAST_READ_DESC");
   };
+
+  if (!booksLoaded) {
+    return (
+      <main className="library-page library-empty">
+        <h1>图书管理</h1>
+        <p className="library-loading">正在加载图书库…</p>
+      </main>
+    );
+  }
 
   if (books.length === 0) {
     return (

@@ -25,6 +25,7 @@ type ControllerState = IdleState | ImportingState | ReadyState | ErrorState;
 export type ReaderController = {
   state: ControllerState;
   books: LibraryBook[];
+  booksLoaded: boolean;
   issues: ScopeIssue[];
   navigation: NavigationNode[];
   importFile: (file: File) => Promise<boolean>;
@@ -46,11 +47,12 @@ export function useReaderController(): ReaderController {
 
   const [controllerState, setControllerState] = useState<ControllerState>({ status: "idle" });
   const [books, setBooks] = useState<LibraryBook[]>([]);
+  const [booksLoaded, setBooksLoaded] = useState(false);
   const [issues, setIssues] = useState<ScopeIssue[]>([]);
 
   // Load library and restore last-opened book on mount
   useEffect(() => {
-    repoRef.current.listBooks().then(setBooks).catch(() => {});
+    repoRef.current.listBooks().then((list) => { setBooks(list); setBooksLoaded(true); }).catch(() => { setBooksLoaded(true); });
 
     const lastBookId = localStorage.getItem(LAST_BOOK_KEY);
     if (lastBookId) {
@@ -203,5 +205,5 @@ export function useReaderController(): ReaderController {
     return controllerState.inspection.navigation;
   }, [controllerState]);
 
-  return { state: controllerState, books, issues, navigation, importFile, openBook, openTarget, deleteBook };
+  return { state: controllerState, books, booksLoaded, issues, navigation, importFile, openBook, openTarget, deleteBook };
 }

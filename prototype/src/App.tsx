@@ -70,6 +70,7 @@ export function App() {
       {pathname === "/library" ? (
         <LibraryPage
           books={controller.books}
+          booksLoaded={controller.booksLoaded}
           onOpen={(bookId) => {
             controller.openBook(bookId).then(() => navigate("/")).catch(() => {});
           }}

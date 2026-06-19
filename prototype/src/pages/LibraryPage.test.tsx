@@ -32,7 +32,7 @@ const books: LibraryBook[] = [
 describe("LibraryPage", () => {
   it("searches by author and opens the matching book", () => {
     const onOpen = vi.fn();
-    render(<LibraryPage books={books} onOpen={onOpen} onRequestDelete={vi.fn()} onImport={vi.fn()} />);
+    render(<LibraryPage books={books} booksLoaded={true} onOpen={onOpen} onRequestDelete={vi.fn()} onImport={vi.fn()} />);
     fireEvent.change(screen.getByLabelText("搜索图书"), { target: { value: "费孝通" } });
     expect(screen.getByText("乡土中国")).toBeInTheDocument();
     expect(screen.queryByText("人类简史")).not.toBeInTheDocument();
@@ -41,7 +41,7 @@ describe("LibraryPage", () => {
   });
 
   it("shows a recoverable no-results state", () => {
-    render(<LibraryPage books={books} onOpen={vi.fn()} onRequestDelete={vi.fn()} onImport={vi.fn()} />);
+    render(<LibraryPage books={books} booksLoaded={true} onOpen={vi.fn()} onRequestDelete={vi.fn()} onImport={vi.fn()} />);
     fireEvent.change(screen.getByLabelText("搜索图书"), { target: { value: "不存在" } });
     expect(screen.getByText("没有匹配的图书")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "清除条件" }));
@@ -50,19 +50,19 @@ describe("LibraryPage", () => {
 
   it("requests deletion with the selected book id", () => {
     const onRequestDelete = vi.fn();
-    render(<LibraryPage books={books} onOpen={vi.fn()} onRequestDelete={onRequestDelete} onImport={vi.fn()} />);
+    render(<LibraryPage books={books} booksLoaded={true} onOpen={vi.fn()} onRequestDelete={onRequestDelete} onImport={vi.fn()} />);
     fireEvent.click(screen.getByRole("button", { name: "删除《人类简史》" }));
     expect(onRequestDelete).toHaveBeenCalledWith("sapiens");
   });
 
   it("shows an import action when the library is empty", () => {
-    render(<LibraryPage books={[]} onOpen={vi.fn()} onRequestDelete={vi.fn()} onImport={vi.fn()} />);
+    render(<LibraryPage books={[]} booksLoaded={true} onOpen={vi.fn()} onRequestDelete={vi.fn()} onImport={vi.fn()} />);
     expect(screen.getByRole("button", { name: /导入第一本图书/ })).toBeInTheDocument();
   });
 
   it("shows a temporary notice for books that cannot be saved", () => {
     const tempBook = makeBook({ bookId: "temp", title: "临时图书", temporary: true });
-    render(<LibraryPage books={[tempBook]} onOpen={vi.fn()} onRequestDelete={vi.fn()} onImport={vi.fn()} />);
+    render(<LibraryPage books={[tempBook]} booksLoaded={true} onOpen={vi.fn()} onRequestDelete={vi.fn()} onImport={vi.fn()} />);
     expect(screen.getByText(/本次进度无法保存/)).toBeInTheDocument();
   });
 });
