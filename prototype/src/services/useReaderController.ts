@@ -27,7 +27,7 @@ export type ReaderController = {
   books: LibraryBook[];
   issues: ScopeIssue[];
   navigation: NavigationNode[];
-  importFile: (file: File) => Promise<void>;
+  importFile: (file: File) => Promise<boolean>;
   openBook: (bookId: string) => Promise<void>;
   openTarget: (target: PublicationTarget) => Promise<void>;
   deleteBook: (bookId: string) => Promise<void>;
@@ -63,7 +63,7 @@ export function useReaderController(): ReaderController {
     }
   }, []);
 
-  const importFile = useCallback(async (file: File) => {
+  const importFile = useCallback(async (file: File): Promise<boolean> => {
     setControllerState({ status: "importing", progress: null });
     setIssues([]);
 
@@ -75,7 +75,7 @@ export function useReaderController(): ReaderController {
 
     if (result.bookId === null || result.inspection === null) {
       setControllerState({ status: "error", issues: result.issues });
-      return;
+      return false;
     }
 
     const firstTarget = result.inspection.readingOrder[0]?.target;
@@ -101,22 +101,35 @@ export function useReaderController(): ReaderController {
     });
 
     if (!result.temporary) await refreshBooks();
+    return true;
   }, [refreshBooks]);
 
   const openBook = useCallback(async (bookId: string) => {
+    setIssues([]);
     try {
       const pub = await serviceRef.current.openBook(bookId);
-      const firstTarget = pub.inspection.readingOrder[0]?.target;
-      let firstChapter: ChapterDocument | null = null;
-      if (firstTarget) {
-        try { firstChapter = await serviceRef.current.loadChapter(firstTarget); } catch { /* show placeholder */ }
+
+      // Restore the saved chapter; fall back to the first chapter on failure
+      const restoreLocator = pub.location.locator || pub.inspection.readingOrder[0]?.target.locator;
+      const restoreTarget = restoreLocator ? { format: "EPUB" as const, locator: restoreLocator } : null;
+      let restoredChapter: ChapterDocument | null = null;
+      if (restoreTarget) {
+        try {
+          restoredChapter = await serviceRef.current.loadChapter(restoreTarget);
+        } catch {
+          const firstTarget = pub.inspection.readingOrder[0]?.target;
+          if (firstTarget && firstTarget.locator !== restoreLocator) {
+            try { restoredChapter = await serviceRef.current.loadChapter(firstTarget); } catch {}
+          }
+        }
       }
+
       setControllerState({
         status: "ready",
         bookId: pub.bookId,
         inspection: pub.inspection,
-        location: pub.location,
-        chapter: firstChapter,
+        location: serviceRef.current.getLocation() ?? pub.location,
+        chapter: restoredChapter,
         temporary: pub.temporary,
       });
     } catch {
@@ -126,7 +139,8 @@ export function useReaderController(): ReaderController {
 
   const openTarget = useCallback(async (target: PublicationTarget) => {
     const chapter = await serviceRef.current.loadChapter(target);
-    const location: PublicationLocation = {
+    // Session updates its internal location after loadChapter (with correct chapterIndex)
+    const location = serviceRef.current.getLocation() ?? {
       format: target.format,
       locator: target.locator,
       chapterIndex: 0,

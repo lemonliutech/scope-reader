@@ -24,7 +24,7 @@ export function App() {
     const file = event.target.files?.[0];
     event.target.value = "";
     if (!file) return;
-    controller.importFile(file).then(() => navigate("/")).catch(() => {});
+    controller.importFile(file).then((ok) => { if (ok) navigate("/"); }).catch(() => {});
   };
 
   const handleSelectBook = (bookId: string): void => {

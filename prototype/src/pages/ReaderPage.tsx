@@ -1,4 +1,4 @@
-import { List, X } from "@phosphor-icons/react";
+import { ArrowLeft, ArrowRight, List, X } from "@phosphor-icons/react";
 import { useState } from "react";
 import { ChapterFrame } from "../components/ChapterFrame";
 import type {
@@ -62,6 +62,17 @@ export function ReaderPage({ publication, chapter, temporary, onOpenTarget, onOp
     setOutlineOpen(false);
   };
 
+  // Compute prev/next from linear reading order
+  const linearOrder = publication.readingOrder.filter((item) => item.linear);
+  const currentIndex = chapter
+    ? linearOrder.findIndex((item) => item.target.locator === chapter.id)
+    : -1;
+  const prevItem = currentIndex > 0 ? linearOrder[currentIndex - 1] : null;
+  const nextItem =
+    currentIndex >= 0 && currentIndex < linearOrder.length - 1
+      ? linearOrder[currentIndex + 1]
+      : null;
+
   return (
     <>
       {temporary && (
@@ -84,6 +95,29 @@ export function ReaderPage({ publication, chapter, temporary, onOpenTarget, onOp
               <p>请从目录中选择一章</p>
             </div>
           )}
+          <nav className="chapter-nav" aria-label="章节翻页">
+            <button
+              type="button"
+              className="chapter-nav-btn"
+              disabled={!prevItem}
+              onClick={() => prevItem && handleSelect(prevItem.target)}
+              aria-label={prevItem ? `上一章：${prevItem.label}` : "已是第一章"}
+            >
+              <ArrowLeft size={16} />
+              <span className="chapter-nav-label">{prevItem ? prevItem.label : "—"}</span>
+            </button>
+            <span className="chapter-nav-sep" />
+            <button
+              type="button"
+              className="chapter-nav-btn chapter-nav-btn--next"
+              disabled={!nextItem}
+              onClick={() => nextItem && handleSelect(nextItem.target)}
+              aria-label={nextItem ? `下一章：${nextItem.label}` : "已是最后一章"}
+            >
+              <span className="chapter-nav-label">{nextItem ? nextItem.label : "—"}</span>
+              <ArrowRight size={16} />
+            </button>
+          </nav>
         </article>
         <aside className={outlineOpen ? "outline is-open" : "outline"} data-testid="outline-column">
           <button

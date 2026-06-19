@@ -15,7 +15,7 @@ function makeBook(bookId = "book-1", sha256 = "abc123"): StoredBook {
   return {
     bookId,
     sha256,
-    blob: new Blob(["epub-bytes"]),
+    blob: new TextEncoder().encode("epub-bytes").buffer,
     fileName: "test.epub",
     size: 10,
     importedAt: new Date().toISOString(),

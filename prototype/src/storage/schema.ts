@@ -4,7 +4,7 @@ import type { BookMetadata, PublicationInspection, PublicationLocation, ReaderPr
 export type StoredBook = {
   bookId: string;
   sha256: string;
-  blob: Blob;
+  blob: ArrayBuffer;
   fileName: string;
   size: number;
   importedAt: string;

@@ -1,4 +1,4 @@
-import type { ChapterDocument, PublicationInspection, PublicationLocation, PublicationTarget } from "../domain/publication";
+import type { ChapterDocument, PublicationInspection, PublicationLocation, PublicationSource, PublicationTarget } from "../domain/publication";
 import {
   blockingIssues,
   issue,
@@ -7,7 +7,7 @@ import {
   type ScopeIssue,
 } from "../domain/scopeError";
 import { PublicationEngineRegistry } from "../engine/PublicationEngineRegistry";
-import type { PublicationSession } from "../engine/PublicationEngine";
+import type { PublicationEngine, PublicationSession } from "../engine/PublicationEngine";
 import type { LibraryRepository, StoredReadingState } from "../storage/schema";
 
 export type ImportProgress = { stage: ImportStage; label: string };
@@ -127,7 +127,7 @@ export class ReaderService {
         book: {
           bookId,
           sha256,
-          blob: new Blob([data]),
+          blob: data,
           fileName: file.name,
           size: file.size,
           importedAt,
@@ -172,9 +172,8 @@ export class ReaderService {
   }
 
   async openBook(bookId: string): Promise<OpenedPublication> {
-    const disposeIssues = await this.destroyCurrentSession();
-    // For already-open temporary sessions we track the bookId
-    if (this.session && this.sessionBookId === bookId) {
+    // Reuse the in-memory session without destroying it
+    if (this.sessionBookId === bookId && this.session !== null) {
       return {
         bookId,
         inspection: this.session.getInspection(),
@@ -182,10 +181,64 @@ export class ReaderService {
         temporary: this.temporarySource !== null,
       };
     }
-    throw new ScopeException([
-      ...disposeIssues,
-      issue("ENGINE_LOAD_FAILED", "OPEN_READER", true),
-    ]);
+
+    const disposeIssues = await this.destroyCurrentSession();
+
+    // Load persisted book from storage
+    let bundle: Awaited<ReturnType<typeof this.repository.loadBook>>;
+    try {
+      bundle = await this.repository.loadBook(bookId);
+    } catch {
+      throw new ScopeException([
+        ...disposeIssues,
+        issue("ENGINE_LOAD_FAILED", "OPEN_READER", true),
+      ]);
+    }
+
+    if (!bundle) {
+      throw new ScopeException([
+        ...disposeIssues,
+        issue("ENGINE_LOAD_FAILED", "OPEN_READER", true),
+      ]);
+    }
+
+    const data = bundle.book.blob;
+    const source: PublicationSource = {
+      fileName: bundle.book.fileName,
+      mediaType: "application/epub+zip",
+      size: bundle.book.size,
+      data,
+    };
+
+    let engine: PublicationEngine;
+    try {
+      engine = await this.registry.select(source);
+    } catch (error) {
+      throw new ScopeException([
+        ...disposeIssues,
+        ...scopeIssues(error, "FORMAT_ENGINE_NOT_FOUND", "OPEN_READER"),
+      ]);
+    }
+
+    let session: PublicationSession;
+    try {
+      session = await engine.open(source);
+    } catch (error) {
+      throw new ScopeException([
+        ...disposeIssues,
+        ...scopeIssues(error, "ENGINE_LOAD_FAILED", "OPEN_READER"),
+      ]);
+    }
+
+    this.session = session;
+    this.sessionBookId = bookId;
+
+    return {
+      bookId,
+      inspection: bundle.publication.inspection,
+      location: bundle.readingState.location,
+      temporary: false,
+    };
   }
 
   async loadChapter(target: PublicationTarget): Promise<ChapterDocument> {
@@ -193,6 +246,10 @@ export class ReaderService {
       throw new ScopeException([issue("ENGINE_LOAD_FAILED", "LOAD_CHAPTER", true)]);
     }
     return this.session.loadChapter(target);
+  }
+
+  getLocation(): PublicationLocation | null {
+    return this.session?.getLocation() ?? null;
   }
 
   async saveLocation(location: PublicationLocation): Promise<void> {

@@ -68,7 +68,9 @@ export class EpubJsDriver {
 
   private createBook(data: ArrayBuffer): EpubBook {
     ensureWindowUrlApis();
-    return ePub(data.slice(0), { replacements: "blobUrl" });
+    // Do NOT pass replacements:"blobUrl" — it requires a live rendition/view and crashes
+    // headless when trying to call replaceCss on an undefined Contents object.
+    return ePub(data.slice(0));
   }
 
   private async waitUntilReady(book: EpubBook): Promise<void> {

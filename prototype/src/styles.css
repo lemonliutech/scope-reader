@@ -652,7 +652,7 @@ a:hover {
 .book-table-head,
 .book-row {
   display: grid;
-  grid-template-columns: minmax(280px, 1fr) 90px 170px 120px 210px;
+  grid-template-columns: minmax(280px, 1fr) 80px 150px 190px;
   align-items: center;
   column-gap: 14px;
 }
@@ -735,13 +735,14 @@ a:hover {
 
 .book-actions {
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
   gap: 4px;
   padding-right: 8px;
 }
 
 .book-actions button {
-  min-height: 34px;
+  flex: 0 0 auto;
+  height: 34px;
   padding: 0 9px;
   display: inline-flex;
   align-items: center;
@@ -751,6 +752,7 @@ a:hover {
   border: 0;
   cursor: pointer;
   font-size: 13px;
+  white-space: nowrap;
 }
 
 .book-actions button:hover,
@@ -990,6 +992,60 @@ a:hover {
   padding: 48px 32px;
   color: var(--muted);
   text-align: center;
+}
+
+/* ── Chapter prev/next navigation bar ───────────────────────────────────── */
+
+.chapter-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 20px 0 32px;
+  border-top: 1px solid var(--soft-border);
+  margin-top: 32px;
+}
+
+.chapter-nav-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--link);
+  cursor: pointer;
+  font-size: 14px;
+  max-width: 240px;
+  transition: background 0.15s;
+}
+
+.chapter-nav-btn:hover:not(:disabled) {
+  background: #f8f9fa;
+}
+
+.chapter-nav-btn:disabled {
+  color: var(--muted);
+  border-color: var(--soft-border);
+  cursor: default;
+}
+
+.chapter-nav-label {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.chapter-nav-btn--next {
+  margin-left: auto;
+  text-align: right;
+  flex-direction: row;
+  justify-content: flex-end;
+}
+
+.chapter-nav-sep {
+  flex: 1;
 }
 
 /* ── Reader notice (temporary book) ─────────────────────────────────────── */

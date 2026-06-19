@@ -130,6 +130,25 @@ describe("ReaderService", () => {
     expect(result.issues.some((i) => i.code === "ENGINE_DISPOSE_FAILED" && !i.blocking)).toBe(true);
   });
 
+  it("openBook reloads a previously imported book from IndexedDB", async () => {
+    const engine = makeEngine();
+    const registry = new PublicationEngineRegistry([engine]);
+    const repo = new IndexedDbLibraryRepository();
+    const service = new ReaderService(registry, repo);
+
+    const result = await service.importFile(makeFile(), () => {});
+    expect(result.bookId).not.toBeNull();
+
+    // Destroy the in-memory session to simulate a page reload scenario
+    await service.close();
+
+    // openBook should re-open from IndexedDB
+    const pub = await service.openBook(result.bookId!);
+    expect(pub.bookId).toBe(result.bookId);
+    expect(pub.inspection.metadata.title).toBeDefined();
+    expect(pub.temporary).toBe(false);
+  });
+
   it("falls back to in-memory (temporary) when IndexedDB is unavailable", async () => {
     const engine = makeEngine();
     const registry = new PublicationEngineRegistry([engine]);
