@@ -9,7 +9,6 @@ import type {
   ReadingOrderItem,
 } from "../../domain/publication";
 import {
-  blockingIssues,
   issue,
   ScopeException,
   type ScopeIssue,
@@ -33,18 +32,24 @@ const EPUB_CONTAINER_CODES: ReadonlySet<ScopeErrorCode> = new Set([
   "CONTAINER_XML_INVALID",
 ] as const);
 
+// Codes that truly prevent the driver from parsing content
 const EPUB_DRIVER_FATAL_CODES: ReadonlySet<ScopeErrorCode> = new Set([
   "ZIP_INVALID",
   "ZIP_BOMB_SUSPECTED",
-  "MIMETYPE_MISSING",
-  "MIMETYPE_INVALID",
   "CONTAINER_XML_MISSING",
   "CONTAINER_XML_INVALID",
   "PACKAGE_DOCUMENT_MISSING",
   "PACKAGE_DOCUMENT_INVALID",
-  "MANIFEST_INVALID",
   "SPINE_EMPTY",
-  "SPINE_REFERENCE_MISSING",
+] as const);
+
+// Codes that should block open() — strict security/compatibility gates only
+const EPUB_OPEN_BLOCKING_CODES: ReadonlySet<ScopeErrorCode> = new Set([
+  "ZIP_INVALID",
+  "ZIP_BOMB_SUSPECTED",
+  "CONTAINER_XML_MISSING",
+  "CONTAINER_XML_INVALID",
+  "UNSUPPORTED_ENCRYPTION",
 ] as const);
 
 export class EpubEngineAdapter implements PublicationEngine {
@@ -53,17 +58,13 @@ export class EpubEngineAdapter implements PublicationEngine {
   constructor(private readonly driverFactory: () => EpubJsDriver) {}
 
   async canOpen(source: PublicationSource) {
-    const bytes = new Uint8Array(source.data);
-    const preflight = preflightEpub(bytes);
-    const codes = preflight.issues.map((i) => i.code);
-    const hasContainerIssue = preflight.issues.some((item) => EPUB_CONTAINER_CODES.has(item.code));
-    const hasEpub = hasEpubExtension(source.fileName);
-    const confidence = !hasContainerIssue ? 100 : hasEpub ? 20 : 0;
-    console.error("[EpubEngineAdapter.canOpen]", {
-      fileName: source.fileName, byteLength: bytes.byteLength,
-      issues: codes, hasContainerIssue, hasEpub, confidence,
-    });
-    return confidence;
+    const preflight = preflightEpub(new Uint8Array(source.data));
+    // No issues at all → high confidence
+    if (!preflight.issues.some((item) => EPUB_CONTAINER_CODES.has(item.code))) return 100;
+    // Has some container issues but found a valid OPF package → still try
+    if (preflight.packagePath !== null) return 30;
+    // Unknown structure but looks like EPUB by name
+    return hasEpubExtension(source.fileName) ? 10 : 0;
   }
 
   async inspect(source: PublicationSource): Promise<PublicationInspection> {
@@ -74,7 +75,7 @@ export class EpubEngineAdapter implements PublicationEngine {
 
   async open(source: PublicationSource): Promise<PublicationSession> {
     const preflight = preflightEpub(new Uint8Array(source.data));
-    const blocking = blockingIssues(preflight.issues);
+    const blocking = preflight.issues.filter((i) => EPUB_OPEN_BLOCKING_CODES.has(i.code));
     if (blocking.length > 0) {
       throw new ScopeException(blocking);
     }

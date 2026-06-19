@@ -64,4 +64,4 @@ export interface ReaderPreferences {
   theme: "LIGHT" | "DARK";
 }
 
-export type FormatConfidence = 0 | 20 | 100;
+export type FormatConfidence = 0 | 10 | 20 | 30 | 100;
