@@ -1,8 +1,7 @@
 import { X } from "@phosphor-icons/react";
-import type { LocalBook } from "../data/demoBooks";
 
 type ConfirmDialogProps = {
-  book: LocalBook | null;
+  book: { title: string } | null;
   onCancel: () => void;
   onConfirm: () => void;
 };

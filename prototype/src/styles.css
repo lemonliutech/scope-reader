@@ -892,6 +892,123 @@ a:hover {
   }
 }
 
+/* ── Import status overlay ─────────────────────────────────────────────── */
+
+.import-status {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.92);
+  font-size: 16px;
+  color: #202122;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.import-spinner {
+  display: inline-block;
+  width: 22px;
+  height: 22px;
+  border: 3px solid #c8ccd1;
+  border-top-color: #3366cc;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+/* ── Import error panel ─────────────────────────────────────────────────── */
+
+.import-error-container {
+  width: min(680px, calc(100% - 32px));
+  margin: 24px auto;
+}
+
+.import-error {
+  padding: 16px 20px;
+  border-radius: 4px;
+  margin-bottom: 12px;
+}
+
+.import-error--blocking {
+  background: #fef2f2;
+  border: 1px solid #fca5a5;
+}
+
+.import-error--warning {
+  background: #fffbeb;
+  border: 1px solid #fcd34d;
+}
+
+.import-error h2 {
+  margin: 0 0 12px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.import-error-item {
+  margin-bottom: 12px;
+}
+
+.import-error-item:last-child { margin-bottom: 0; }
+
+.import-error-item h3 {
+  margin: 0 0 4px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.import-error-item p {
+  margin: 0 0 4px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.import-error-item code {
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 11px;
+  color: #6b7280;
+  background: rgba(0, 0, 0, 0.04);
+  padding: 1px 4px;
+  border-radius: 2px;
+}
+
+/* ── Chapter iframe ─────────────────────────────────────────────────────── */
+
+.chapter-frame {
+  width: 100%;
+  border: 0;
+  overflow: hidden;
+  display: block;
+}
+
+.chapter-placeholder {
+  padding: 48px 32px;
+  color: var(--muted);
+  text-align: center;
+}
+
+/* ── Reader notice (temporary book) ─────────────────────────────────────── */
+
+.reader-notice {
+  background: #fffbeb;
+  border-bottom: 1px solid #fcd34d;
+  text-align: center;
+  padding: 6px 16px;
+  font-size: 13px;
+  color: #92400e;
+}
+
+/* ── Temporary book badge in library ────────────────────────────────────── */
+
+.book-temporary-badge {
+  color: #92400e;
+}
+
 @media (max-width: 560px) {
   .brand {
     font-size: 21px;
