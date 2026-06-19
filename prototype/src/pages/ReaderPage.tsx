@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowRight, List, X } from "@phosphor-icons/react";
+import { ArrowLeft, ArrowRight, BookOpen, FileArrowUp, List, X } from "@phosphor-icons/react";
 import { useState } from "react";
 import { ChapterFrame } from "../components/ChapterFrame";
 import type {
@@ -18,6 +18,7 @@ type ReaderPageProps = {
   temporary: boolean;
   onOpenTarget: (target: PublicationTarget) => void;
   onOpenLibrary: () => void;
+  onImport: () => void;
 };
 
 type NavNodeProps = { node: NavigationNode; onSelect: (target: PublicationTarget) => void };
@@ -49,15 +50,22 @@ function NavNode({ node, onSelect }: NavNodeProps) {
   );
 }
 
-export function ReaderPage({ publication, chapter, locator, temporary, onOpenTarget, onOpenLibrary }: ReaderPageProps) {
+export function ReaderPage({ publication, chapter, locator, temporary, onOpenTarget, onOpenLibrary, onImport }: ReaderPageProps) {
   const [outlineOpen, setOutlineOpen] = useState(false);
   const anchor = locator?.split("#")[1] ?? null;
 
   if (!publication) {
     return (
       <main className="reader-empty">
-        <h1>还没有打开图书</h1>
-        <button type="button" onClick={onOpenLibrary}>前往图书管理</button>
+        <div className="welcome-icon"><BookOpen size={48} weight="thin" /></div>
+        <h1>开始阅读</h1>
+        <p>导入一本 EPUB 图书，Scope 会将它渲染为自然滚动的网页。</p>
+        <div className="welcome-actions">
+          <button className="primary-button" type="button" onClick={onImport}>
+            <FileArrowUp size={17} />导入图书
+          </button>
+          <button type="button" onClick={onOpenLibrary}>前往图书管理</button>
+        </div>
       </main>
     );
   }

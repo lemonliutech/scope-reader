@@ -89,6 +89,7 @@ export function App() {
           temporary={controller.state.status === "ready" ? controller.state.temporary : false}
           onOpenTarget={controller.openTarget}
           onOpenLibrary={() => navigate("/library")}
+          onImport={() => fileInputRef.current?.click()}
         />
       )}
       <ConfirmDialog

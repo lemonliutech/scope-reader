@@ -511,7 +511,7 @@ a:hover {
 
 .dialog-actions button,
 .no-results button,
-.reader-empty button {
+.reader-empty button:not(.primary-button) {
   min-height: 36px;
   padding: 0 14px;
   background: #fff;
@@ -547,6 +547,12 @@ a:hover {
   place-content: center;
   justify-items: center;
   text-align: center;
+  padding: 40px 20px;
+}
+
+.welcome-icon {
+  color: var(--muted);
+  margin-bottom: 12px;
 }
 
 .reader-empty h1,
@@ -557,8 +563,26 @@ a:hover {
 
 .reader-empty p,
 .library-empty p {
-  margin: 0 0 20px;
+  margin: 0 0 24px;
   color: var(--muted);
+  max-width: 360px;
+  line-height: 1.6;
+}
+
+.welcome-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.welcome-actions button:not(.primary-button) {
+  min-height: 36px;
+  padding: 0 14px;
+  background: none;
+  border: none;
+  color: var(--link);
+  cursor: pointer;
+  font-size: 14px;
 }
 
 .library-page {
