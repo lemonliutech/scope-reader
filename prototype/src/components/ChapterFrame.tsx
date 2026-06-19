@@ -1,113 +1,125 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useRef } from "react";
 import type { ChapterDocument, ReaderPreferences } from "../domain/publication";
 
 type ChapterFrameProps = {
   chapter: ChapterDocument;
   preferences: ReaderPreferences;
   anchor: string | null;
-  onDispose: () => void;
   onExternalLink: (url: string) => void;
 };
 
-export function ChapterFrame({ chapter, preferences, anchor, onDispose, onExternalLink }: ChapterFrameProps) {
-  const ref = useRef<HTMLIFrameElement>(null);
+export function ChapterFrame({ chapter, preferences, anchor, onExternalLink }: ChapterFrameProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  // Keep a ref so the event-delegation handler always calls the latest version
+  const onExternalLinkRef = useRef(onExternalLink);
+  onExternalLinkRef.current = onExternalLink;
 
-  useEffect(() => onDispose, [onDispose]);
-
-  const srcDoc = useMemo(
-    () => buildSafeChapterDocument(chapter, preferences),
-    [chapter, preferences],
-  );
-
-  const scrollToAnchor = (id: string): void => {
-    const doc = ref.current?.contentDocument;
-    const el = doc?.getElementById(id) ?? doc?.querySelector(`[name="${id.replaceAll('"', '\\"')}"]`);
-    el?.scrollIntoView({ block: "start" });
-  };
-
-  const resize = (): void => {
-    const root = ref.current?.contentDocument?.documentElement;
-    if (root && ref.current) ref.current.style.height = `${root.scrollHeight}px`;
-  };
-
-  // Register a capture-phase click listener to intercept external links
+  // Inject sanitized body HTML and scoped EPUB styles when the chapter changes
   useEffect(() => {
-    const iframe = ref.current;
-    if (!iframe) return;
+    const container = containerRef.current;
+    if (!container) return;
 
-    const onClick = (event: MouseEvent) => {
+    let cancelled = false;
+    let styleEl: HTMLStyleElement | null = null;
+
+    void (async () => {
+      const { bodyHtml, inlineStyles, linkUrls } = parseChapter(chapter.html);
+
+      // Fetch CSS from epubjs-generated blob: URLs (fast — already in memory)
+      const fetchedCss = (
+        await Promise.all(linkUrls.map((url) => fetch(url).then((r) => r.text()).catch(() => "")))
+      ).join("\n");
+
+      if (cancelled) return;
+
+      container.innerHTML = bodyHtml;
+
+      const allCss = [inlineStyles, fetchedCss].join("\n").trim();
+      if (allCss) {
+        styleEl = document.createElement("style");
+        // @scope isolates EPUB CSS to .chapter-content without shadow DOM
+        // (Chrome 118+, Firefox 128+, Safari 17.4+; older browsers skip gracefully)
+        styleEl.textContent = `@scope (.chapter-content) {\n${allCss}\n}`;
+        document.head.appendChild(styleEl);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      styleEl?.remove();
+      if (containerRef.current) containerRef.current.innerHTML = "";
+    };
+  }, [chapter.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Scroll to anchor after chapter loads or anchor changes
+  useEffect(() => {
+    if (!anchor || !containerRef.current) return;
+    const el =
+      containerRef.current.querySelector(`#${CSS.escape(anchor)}`) ??
+      containerRef.current.querySelector(`[name="${anchor.replaceAll('"', '\\"')}"]`);
+    el?.scrollIntoView({ block: "start" });
+  }, [anchor, chapter.id]);
+
+  // External-link interception via event delegation (registered once)
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const handler = (event: MouseEvent) => {
       const target = (event.target as Element | null)?.closest("[data-external-url]");
       if (!target) return;
       const url = target.getAttribute("data-external-url");
       if (url) {
         event.preventDefault();
-        onExternalLink(url);
+        onExternalLinkRef.current(url);
       }
     };
-
-    const onLoad = () => {
-      iframe.contentDocument?.addEventListener("click", onClick, true);
-    };
-
-    iframe.addEventListener("load", onLoad);
-    return () => {
-      iframe.removeEventListener("load", onLoad);
-      iframe.contentDocument?.removeEventListener("click", onClick, true);
-    };
-  }, [onExternalLink]);
-
-  // Scroll to anchor after the iframe document loads
-  const handleLoad = (): void => {
-    resize();
-    if (anchor) scrollToAnchor(anchor);
-  };
-
-  // Scroll when anchor changes without a full chapter reload (same file, different section)
-  useEffect(() => {
-    if (anchor) scrollToAnchor(anchor);
-  }, [anchor]); // eslint-disable-line react-hooks/exhaustive-deps
+    container.addEventListener("click", handler);
+    return () => container.removeEventListener("click", handler);
+  }, []);
 
   return (
-    <iframe
-      ref={ref}
-      className="chapter-frame"
-      sandbox="allow-same-origin"
-      title={chapter.title}
-      srcDoc={srcDoc}
-      onLoad={handleLoad}
-      style={{ width: "100%", border: 0, overflow: "hidden", display: "block" }}
+    <div
+      ref={containerRef}
+      className="chapter-content"
+      style={{
+        fontSize: `${preferences.fontSize}px`,
+        lineHeight: preferences.lineHeight,
+        background: preferences.theme === "DARK" ? "#1a1a1a" : "#fff",
+        color: preferences.theme === "DARK" ? "#e0e0e0" : "#1a1a1a",
+      }}
     />
   );
 }
 
-const BLOCKED_TAGS = new Set(["script", "form", "object", "embed"]);
+// ── HTML parsing & sanitisation ───────────────────────────────────────────────
+
+const BLOCKED_TAGS = new Set(["script", "form", "object", "embed", "iframe"]);
 const EVENT_ATTR_RE = /^on[a-z]/i;
 
-function buildSafeChapterDocument(chapter: ChapterDocument, preferences: ReaderPreferences): string {
+function parseChapter(html: string): {
+  bodyHtml: string;
+  inlineStyles: string;
+  linkUrls: string[];
+} {
   const parser = new DOMParser();
-  const doc = parser.parseFromString(chapter.html, "text/html");
+  const doc = parser.parseFromString(html, "text/html");
 
   // Remove dangerous elements
   for (const tag of BLOCKED_TAGS) {
     for (const el of Array.from(doc.querySelectorAll(tag))) el.remove();
   }
+  for (const el of Array.from(doc.querySelectorAll('meta[http-equiv="refresh"]'))) el.remove();
 
-  // Remove meta refresh
-  for (const meta of Array.from(doc.querySelectorAll('meta[http-equiv="refresh"]'))) meta.remove();
-
-  // Remove event attributes and handle remote URLs
+  // Strip event attrs; remove remote src; rewrite remote href → data-external-url
   const walker = doc.createTreeWalker(doc.body ?? doc, NodeFilter.SHOW_ELEMENT);
   let node: Node | null = walker.currentNode;
   while (node) {
     const el = node as Element;
-    // Event attributes
     for (const attr of Array.from(el.attributes)) {
       if (EVENT_ATTR_RE.test(attr.name)) el.removeAttribute(attr.name);
     }
-    // Remote src
     const src = el.getAttribute("src");
     if (src && isRemoteUrl(src)) el.removeAttribute("src");
-    // Remote href — convert to data-external-url for click interception
     const href = el.getAttribute("href");
     if (href && isRemoteUrl(href)) {
       el.removeAttribute("href");
@@ -116,17 +128,16 @@ function buildSafeChapterDocument(chapter: ChapterDocument, preferences: ReaderP
     node = walker.nextNode();
   }
 
-  // Inject reader preferences
-  const style = doc.createElement("style");
-  style.textContent = `
-    :root { font-size: ${preferences.fontSize}px; line-height: ${preferences.lineHeight}; }
-    body { margin: 0; padding: 1rem 1.5rem; box-sizing: border-box;
-           background: ${preferences.theme === "DARK" ? "#1a1a1a" : "#fff"};
-           color: ${preferences.theme === "DARK" ? "#e0e0e0" : "#1a1a1a"}; }
-  `;
-  (doc.head ?? doc.documentElement).prepend(style);
+  const inlineStyles = Array.from(doc.head?.querySelectorAll("style") ?? [])
+    .map((s) => s.textContent ?? "")
+    .join("\n");
 
-  return `<!DOCTYPE html>${doc.documentElement.outerHTML}`;
+  // Only fetch epubjs-generated blob: / data: URLs (no network requests)
+  const linkUrls = Array.from(doc.head?.querySelectorAll('link[rel="stylesheet"]') ?? [])
+    .map((l) => l.getAttribute("href") ?? "")
+    .filter((url) => url.startsWith("blob:") || url.startsWith("data:"));
+
+  return { bodyHtml: doc.body?.innerHTML ?? "", inlineStyles, linkUrls };
 }
 
 function isRemoteUrl(url: string): boolean {

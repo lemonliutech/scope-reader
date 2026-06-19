@@ -90,7 +90,6 @@ export function ReaderPage({ publication, chapter, locator, temporary, onOpenTar
               chapter={chapter}
               preferences={DEFAULT_PREFS}
               anchor={anchor}
-              onDispose={() => {}}
               onExternalLink={(url) => window.open(url, "_blank", "noopener,noreferrer")}
             />
           ) : (
