@@ -154,7 +154,7 @@ function findOpf(files: Record<string, Uint8Array>): { opfPath: string; opfDir: 
     new TextDecoder().decode(containerXml),
     "application/xml",
   );
-  const rootfile = containerDoc.querySelector("rootfile");
+  const rootfile = containerDoc.getElementsByTagNameNS("*", "rootfile")[0] ?? null;
   const opfPath = rootfile?.getAttribute("full-path");
   if (!opfPath) {
     throw new ScopeException([issue("CONTAINER_XML_INVALID", "INSPECT_PUBLICATION", true)]);
@@ -177,15 +177,15 @@ function parseOpf(
   opfDoc: Document,
 ): { manifest: Map<string, { href: string; mediaType: string }>; spine: EpubDriverSpineItem[] } {
   const manifest = new Map<string, { href: string; mediaType: string }>();
-  for (const item of Array.from(opfDoc.querySelectorAll("manifest > item"))) {
+  for (const item of Array.from(opfDoc.getElementsByTagNameNS("*", "item"))) {
     const id = item.getAttribute("id") ?? "";
     const href = item.getAttribute("href") ?? "";
     const mediaType = item.getAttribute("media-type") ?? "";
-    manifest.set(id, { href: decodeURIComponent(href), mediaType });
+    if (id && href) manifest.set(id, { href: decodeURIComponent(href), mediaType });
   }
 
   const spine: EpubDriverSpineItem[] = Array.from(
-    opfDoc.querySelectorAll("spine > itemref"),
+    opfDoc.getElementsByTagNameNS("*", "itemref"),
   ).map((ref) => {
     const idref = ref.getAttribute("idref") ?? "";
     const item = manifest.get(idref);
@@ -208,7 +208,7 @@ function parseNavigation(
   files: Record<string, Uint8Array>,
 ): EpubDriverNavNode[] {
   // EPUB 3: look for <item properties="nav">
-  const navItem = Array.from(opfDoc.querySelectorAll("manifest > item")).find(
+  const navItem = Array.from(opfDoc.getElementsByTagNameNS("*", "item")).find(
     (el) => el.getAttribute("properties")?.includes("nav"),
   );
   if (navItem) {
@@ -219,13 +219,19 @@ function parseNavigation(
         new TextDecoder().decode(raw),
         "application/xhtml+xml",
       );
-      const navEl = navDoc.querySelector('nav[epub\\:type="toc"], nav[role="doc-toc"], nav');
+      const navEl =
+        navDoc.querySelector('nav[epub\\:type="toc"]') ??
+        Array.from(navDoc.getElementsByTagNameNS("*", "nav")).find(
+          (el) => el.getAttribute("epub:type") === "toc" || el.getAttribute("role") === "doc-toc",
+        ) ??
+        navDoc.getElementsByTagNameNS("*", "nav")[0] ??
+        null;
       if (navEl) return parseNavXhtml(navEl);
     }
   }
 
   // EPUB 2 fallback: NCX
-  const ncxItem = Array.from(opfDoc.querySelectorAll("manifest > item")).find((el) =>
+  const ncxItem = Array.from(opfDoc.getElementsByTagNameNS("*", "item")).find((el) =>
     el.getAttribute("media-type")?.includes("ncx"),
   );
   if (ncxItem) {
@@ -245,28 +251,32 @@ function parseNavigation(
 
 function parseNavXhtml(nav: Element): EpubDriverNavNode[] {
   function parseOl(ol: Element): EpubDriverNavNode[] {
-    return Array.from(ol.querySelectorAll(":scope > li")).map((li, i) => {
-      const a = li.querySelector("a");
+    const directLis = Array.from(ol.getElementsByTagNameNS("*", "li")).filter(
+      (li) => li.parentElement === ol,
+    );
+    return directLis.map((li, i) => {
+      const a = li.getElementsByTagNameNS("*", "a")[0] ?? null;
       const href = a?.getAttribute("href") ?? "";
       const label = a?.textContent?.trim() ?? `item-${i}`;
-      const childOl = li.querySelector("ol");
+      const childOl = li.getElementsByTagNameNS("*", "ol")[0] ?? null;
       return { id: href || `nav-${i}`, label, href, children: childOl ? parseOl(childOl) : [] };
     });
   }
-  const ol = nav.querySelector("ol");
+  const ol = nav.getElementsByTagNameNS("*", "ol")[0] ?? null;
   return ol ? parseOl(ol) : [];
 }
 
 function parseNcx(doc: Document): EpubDriverNavNode[] {
-  function parsePoints(parent: Element): EpubDriverNavNode[] {
-    return Array.from(parent.querySelectorAll(":scope > navPoint")).map((pt) => {
-      const label = pt.querySelector("navLabel > text")?.textContent?.trim() ?? "";
-      const src = pt.querySelector("content")?.getAttribute("src") ?? "";
-      const href = src;
-      return { id: pt.getAttribute("id") ?? href, label, href, children: parsePoints(pt) };
-    });
+  function parsePoints(parent: Element | Document): EpubDriverNavNode[] {
+    return Array.from(parent.getElementsByTagNameNS("*", "navPoint"))
+      .filter((pt) => pt.parentElement === (parent instanceof Document ? parent.documentElement : parent))
+      .map((pt) => {
+        const label = pt.getElementsByTagNameNS("*", "text")[0]?.textContent?.trim() ?? "";
+        const src = pt.getElementsByTagNameNS("*", "content")[0]?.getAttribute("src") ?? "";
+        return { id: pt.getAttribute("id") ?? src, label, href: src, children: parsePoints(pt) };
+      });
   }
-  const navMap = doc.querySelector("navMap");
+  const navMap = doc.getElementsByTagNameNS("*", "navMap")[0];
   return navMap ? parsePoints(navMap) : [];
 }
 
@@ -278,13 +288,13 @@ function parseCover(
   files: Record<string, Uint8Array>,
 ): Blob | null {
   // EPUB 3: <item properties="cover-image">
-  let coverItem = Array.from(opfDoc.querySelectorAll("manifest > item")).find((el) =>
-    el.getAttribute("properties")?.includes("cover-image"),
-  );
+  const allItems = Array.from(opfDoc.getElementsByTagNameNS("*", "item"));
+  let coverItem = allItems.find((el) => el.getAttribute("properties")?.includes("cover-image"));
   // EPUB 2: <meta name="cover" content="cover-id">
   if (!coverItem) {
-    const metaCoverId = opfDoc.querySelector('meta[name="cover"]')?.getAttribute("content");
-    if (metaCoverId) coverItem = opfDoc.querySelector(`manifest > item[id="${metaCoverId}"]`) ?? undefined;
+    const metaCoverId = Array.from(opfDoc.getElementsByTagNameNS("*", "meta"))
+      .find((el) => el.getAttribute("name") === "cover")?.getAttribute("content");
+    if (metaCoverId) coverItem = allItems.find((el) => el.getAttribute("id") === metaCoverId);
   }
   if (!coverItem) return null;
 
@@ -302,9 +312,10 @@ function parseCover(
 
 function getDcText(opfDoc: Document, localName: string): string {
   const DC = "http://purl.org/dc/elements/1.1/";
+  // getElementsByTagNameNS with wildcard namespace also matches Dublin Core elements
   return (
     opfDoc.getElementsByTagNameNS(DC, localName)[0]?.textContent?.trim() ??
-    opfDoc.querySelector(localName)?.textContent?.trim() ??
+    opfDoc.getElementsByTagNameNS("*", localName)[0]?.textContent?.trim() ??
     ""
   );
 }
