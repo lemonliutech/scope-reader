@@ -6,6 +6,7 @@ export class PublicationEngineRegistry {
   constructor(private readonly engines: readonly PublicationEngine[]) {}
 
   async select(source: PublicationSource): Promise<PublicationEngine> {
+    console.error("[Registry.select] engines:", this.engines.length, "fileName:", source.fileName);
     const results = await Promise.all(this.engines.map(async (engine) => {
       try {
         return { engine, confidence: await engine.canOpen(source), failed: false as const };

@@ -59,7 +59,7 @@ export class EpubEngineAdapter implements PublicationEngine {
     const hasContainerIssue = preflight.issues.some((item) => EPUB_CONTAINER_CODES.has(item.code));
     const hasEpub = hasEpubExtension(source.fileName);
     const confidence = !hasContainerIssue ? 100 : hasEpub ? 20 : 0;
-    console.debug("[EpubEngineAdapter.canOpen]", {
+    console.error("[EpubEngineAdapter.canOpen]", {
       fileName: source.fileName, byteLength: bytes.byteLength,
       issues: codes, hasContainerIssue, hasEpub, confidence,
     });
