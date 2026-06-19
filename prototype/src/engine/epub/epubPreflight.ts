@@ -182,7 +182,7 @@ function inspectContainer(entries: Map<string, Uint8Array>, issues: ScopeIssue[]
   const document = parseXml(content);
   const rootfile = document === null
     ? undefined
-    : Array.from(document.getElementsByTagNameNS("*", "rootfile")).find((node) => node.hasAttribute("full-path"));
+    : queryLocalName(document, "rootfile").find((node) => node.hasAttribute("full-path"));
   const packagePath = rootfile?.getAttribute("full-path")?.trim();
   if (document === null || packagePath === undefined || packagePath === "" || !isSafePath(packagePath)) {
     issues.push(issue("CONTAINER_XML_INVALID", "INSPECT_PUBLICATION", true));
@@ -203,7 +203,7 @@ function inspectPackage(packagePath: string, entries: Map<string, Uint8Array>, i
     issues.push(issue("PACKAGE_DOCUMENT_INVALID", "INSPECT_PUBLICATION", true));
     return;
   }
-  const manifestItems = Array.from(document.getElementsByTagNameNS("*", "item"));
+  const manifestItems = queryLocalName(document, "item");
   const manifestIds = new Set<string>();
   let manifestInvalid = false;
   for (const itemElement of manifestItems) {
@@ -220,7 +220,7 @@ function inspectPackage(packagePath: string, entries: Map<string, Uint8Array>, i
     issues.push(issue("MANIFEST_INVALID", "INSPECT_PUBLICATION", true));
   }
 
-  const spineItems = Array.from(document.getElementsByTagNameNS("*", "itemref"));
+  const spineItems = queryLocalName(document, "itemref");
   if (spineItems.length === 0) {
     issues.push(issue("SPINE_EMPTY", "INSPECT_PUBLICATION", true));
   }
@@ -231,7 +231,7 @@ function inspectPackage(packagePath: string, entries: Map<string, Uint8Array>, i
     }
   }
 
-  const fixedLayout = Array.from(document.getElementsByTagNameNS("*", "meta")).some(
+  const fixedLayout = queryLocalName(document, "meta").some(
     (meta) => meta.getAttribute("property") === "rendition:layout" && meta.textContent?.trim() === "pre-paginated",
   );
   if (fixedLayout) issues.push(issue("UNSUPPORTED_FIXED_LAYOUT", "CHECK_CAPABILITIES", true));
@@ -245,12 +245,19 @@ function inspectEncryption(entries: Map<string, Uint8Array>, issues: ScopeIssue[
     issues.push(issue("UNSUPPORTED_ENCRYPTION", "CHECK_CAPABILITIES", true));
     return;
   }
-  const algorithms = Array.from(document.getElementsByTagNameNS("*", "EncryptionMethod"))
+  const algorithms = queryLocalName(document, "EncryptionMethod")
     .map((element) => element.getAttribute("Algorithm"))
     .filter((algorithm): algorithm is string => algorithm !== null);
   if (algorithms.length === 0 || algorithms.some((algorithm) => !SUPPORTED_OBFUSCATION_ALGORITHMS.has(algorithm))) {
     issues.push(issue("UNSUPPORTED_ENCRYPTION", "CHECK_CAPABILITIES", true, { algorithms }));
   }
+}
+
+// getElementsByTagNameNS("*", name) has broken namespace wildcard support in some DOM
+// implementations (e.g. happy-dom). querySelectorAll("*") + localName filter is equivalent
+// and universally supported.
+function queryLocalName(parent: Document | Element, localName: string): Element[] {
+  return Array.from(parent.querySelectorAll("*")).filter((el) => el.localName === localName);
 }
 
 function parseXml(content: Uint8Array): XMLDocument | null {
