@@ -2,6 +2,7 @@ import { unzipSync } from "fflate";
 import { issue, type ScopeIssue } from "../../domain/scopeError";
 
 const MAX_ENTRY_COUNT = 10_000;
+const MAX_INPUT_SIZE = 100 * 1024 * 1024;
 const MAX_TOTAL_UNCOMPRESSED_SIZE = 500 * 1024 * 1024;
 const MAX_ENTRY_UNCOMPRESSED_SIZE = 50 * 1024 * 1024;
 const MAX_COMPRESSION_RATIO = 100;
@@ -25,6 +26,18 @@ export type EpubPreflight = {
 };
 
 export function preflightEpub(bytes: Uint8Array): EpubPreflight {
+  if (bytes.byteLength > MAX_INPUT_SIZE) {
+    return {
+      packagePath: null,
+      entries: new Map(),
+      issues: [
+        issue("ZIP_BOMB_SUSPECTED", "INSPECT_PUBLICATION", true, {
+          reasons: ["INPUT_SIZE_LIMIT"],
+        }),
+      ],
+    };
+  }
+
   let directory: CentralDirectoryEntry[];
   try {
     directory = readCentralDirectory(bytes);
@@ -37,6 +50,7 @@ export function preflightEpub(bytes: Uint8Array): EpubPreflight {
   }
 
   const issues: ScopeIssue[] = [];
+  const mimetypeStructureValid = inspectMimetypeDirectory(directory, issues);
   const unsafeReasons = inspectArchiveLimits(directory);
   if (unsafeReasons.length > 0) {
     issues.push(issue("ZIP_BOMB_SUSPECTED", "INSPECT_PUBLICATION", true, { reasons: unsafeReasons }));
@@ -54,7 +68,7 @@ export function preflightEpub(bytes: Uint8Array): EpubPreflight {
     };
   }
 
-  inspectMimetype(directory, entries, issues);
+  if (mimetypeStructureValid) inspectMimetypeContent(entries, issues);
   const packagePath = inspectContainer(entries, issues);
   if (packagePath !== null) {
     inspectPackage(packagePath, entries, issues);
@@ -136,21 +150,27 @@ function isSafePath(path: string): boolean {
   return !path.split("/").some((segment) => segment === ".." || segment === ".");
 }
 
-function inspectMimetype(
+function inspectMimetypeDirectory(
   directory: CentralDirectoryEntry[],
-  entries: Map<string, Uint8Array>,
   issues: ScopeIssue[],
-): void {
-  const content = entries.get("mimetype");
-  if (content === undefined) {
-    issues.push(issue("MIMETYPE_MISSING", "INSPECT_PUBLICATION", true));
-    return;
-  }
+): boolean {
   const directoryEntry = directory.find(({ name }) => name === "mimetype");
-  const value = new TextDecoder().decode(content);
-  if (value !== EPUB_MIMETYPE || directory[0]?.name !== "mimetype" || directoryEntry?.compressionMethod !== 0) {
-    issues.push(issue("MIMETYPE_INVALID", "INSPECT_PUBLICATION", true));
+  if (directoryEntry === undefined) {
+    issues.push(issue("MIMETYPE_MISSING", "INSPECT_PUBLICATION", true));
+    return false;
   }
+  if (directory[0]?.name !== "mimetype" || directoryEntry.compressionMethod !== 0) {
+    issues.push(issue("MIMETYPE_INVALID", "INSPECT_PUBLICATION", true));
+    return false;
+  }
+  return true;
+}
+
+function inspectMimetypeContent(entries: Map<string, Uint8Array>, issues: ScopeIssue[]): void {
+  const content = entries.get("mimetype");
+  if (content === undefined) return;
+  const value = new TextDecoder().decode(content);
+  if (value !== EPUB_MIMETYPE) issues.push(issue("MIMETYPE_INVALID", "INSPECT_PUBLICATION", true));
 }
 
 function inspectContainer(entries: Map<string, Uint8Array>, issues: ScopeIssue[]): string | null {
