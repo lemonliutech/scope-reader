@@ -78,19 +78,25 @@ export function useReaderController(): ReaderController {
       return;
     }
 
+    const firstTarget = result.inspection.readingOrder[0]?.target;
     const location: PublicationLocation = {
       format: "EPUB",
-      locator: result.inspection.readingOrder[0]?.target.locator ?? "",
+      locator: firstTarget?.locator ?? "",
       chapterIndex: 0,
       scrollRatio: 0,
     };
+
+    let firstChapter: ChapterDocument | null = null;
+    if (firstTarget) {
+      try { firstChapter = await serviceRef.current.loadChapter(firstTarget); } catch { /* show placeholder */ }
+    }
 
     setControllerState({
       status: "ready",
       bookId: result.bookId,
       inspection: result.inspection,
       location,
-      chapter: null,
+      chapter: firstChapter,
       temporary: result.temporary,
     });
 
@@ -100,12 +106,17 @@ export function useReaderController(): ReaderController {
   const openBook = useCallback(async (bookId: string) => {
     try {
       const pub = await serviceRef.current.openBook(bookId);
+      const firstTarget = pub.inspection.readingOrder[0]?.target;
+      let firstChapter: ChapterDocument | null = null;
+      if (firstTarget) {
+        try { firstChapter = await serviceRef.current.loadChapter(firstTarget); } catch { /* show placeholder */ }
+      }
       setControllerState({
         status: "ready",
         bookId: pub.bookId,
         inspection: pub.inspection,
         location: pub.location,
-        chapter: null,
+        chapter: firstChapter,
         temporary: pub.temporary,
       });
     } catch {

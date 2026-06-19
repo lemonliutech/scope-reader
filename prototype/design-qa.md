@@ -51,4 +51,39 @@
 
 - P3：后续接入 EPUB 时，用真实书籍元数据替换演示文案。
 
+## Real EPUB engine integration — 2026-06-19
+
+### Fixture SHA-256
+
+生成命令：`node prototype/scripts/generate-epub-fixtures.mjs`；输出至 `/tmp/scope-reader-epub-fixtures/`。
+
+| 文件 | SHA-256 |
+|------|---------|
+| `epub2-ncx.epub` | `2772597629f3f6d7d9ea1ab5bf5ba5565a0f4ee5fcb2a499765977b1d3926e13` |
+| `epub3-nav.epub` | `22c8f92ef9693ba62c6ff3a56bf73c358edc63ca4650bf1a1326bdbdd957e94e` |
+| `fixed-layout.epub` | `314854f09b104db455155546fa97ca1daed4156b43946dcd45e488cfd4f93bd2` |
+| `script-required.epub` | `261bf06b71c43e33a95a0b0d44f7b0514332879415b707d864220e92f852d45c` |
+| `encrypted.epub` | `7ef3d62681448e78f918adf70bc49be33721f45e675891f0804a5758828f9cdd` |
+| `multi-error.epub` | `8254be814e072bb0827eebc7223a3aeb3059a62ca64cb0794765fc2d96546e6b` |
+
+### Architecture verification
+
+- 62 vitest tests pass (0 failures) on Node 18.20.1
+- TypeScript strict: 0 errors
+- epub.js boundary scan: only `EpubJsDriver.ts` imports `epubjs`
+- Production build: 615.94 kB JS (gzip: 193.34 kB)
+
+### Browser QA
+
+浏览器插件在 CI 环境中不可用；需要在用户本地完成以下流程验证（`npm run dev` 启动后）：
+
+1. 导入 `epub3-nav.epub` — 应显示标题"EPUB 3 Nav 样本"、作者"Scope 测试"、nav 目录"第一章 开始"。
+2. 切章并刷新 — 应恢复当前书（IndexedDB）。
+3. 重复导入同一文件 — 应提示 `DUPLICATE_BOOK`，不覆盖原进度。
+4. 导入 `fixed-layout.epub` — 应显示 `UNSUPPORTED_FIXED_LAYOUT` 阻断错误（中文说明 + 建议 + 错误码）。
+5. 导入 `multi-error.epub` — 应一次显示三条独立错误。
+6. 控制台：无 error 或 warning；网络：无远程出版物资源。
+7. 桌面几何：`{ articleWidth: 780, outlineWidth: 340, delta: 0, gap: "0px" }`（CSS Grid 不变）。
+8. `320 × 844` 无横向溢出；目录抽屉可键盘关闭（Escape）。
+
 final result: passed
