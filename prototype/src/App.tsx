@@ -3,48 +3,51 @@ import { useRef, useState } from "react";
 import type { ChangeEvent } from "react";
 import { AppHeader } from "./components/AppHeader";
 import { ConfirmDialog } from "./components/ConfirmDialog";
-import { useLibrary } from "./library/useLibrary";
+import { ImportError } from "./components/ImportError";
+import { ImportStatus } from "./components/ImportStatus";
 import { LibraryPage } from "./pages/LibraryPage";
 import { ReaderPage } from "./pages/ReaderPage";
+import { useReaderController } from "./services/useReaderController";
 import { usePathname } from "./routing/usePathname";
 
 export function App() {
-  const library = useLibrary();
+  const controller = useReaderController();
   const { pathname, navigate } = usePathname();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [aboutOpen, setAboutOpen] = useState(false);
-  const [message, setMessage] = useState("");
   const [pendingDeleteBookId, setPendingDeleteBookId] = useState<string | null>(null);
-  const pendingDeleteBook =
-    library.books.find((book) => book.id === pendingDeleteBookId) ?? null;
+
+  const pendingDeleteBook = controller.books.find((b) => b.bookId === pendingDeleteBookId) ?? null;
+  const currentBookId = controller.state.status === "ready" ? controller.state.bookId : null;
 
   const handleImport = (event: ChangeEvent<HTMLInputElement>): void => {
     const file = event.target.files?.[0];
     event.target.value = "";
     if (!file) return;
-    try {
-      const book = library.importBook(file);
-      setMessage(`已导入《${book.title}》`);
-      navigate("/library");
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "图书导入失败");
-    }
+    controller.importFile(file).then((ok) => { if (ok) navigate("/"); }).catch(() => {});
+  };
+
+  const handleSelectBook = (bookId: string): void => {
+    controller.openBook(bookId).then(() => navigate("/")).catch(() => {});
   };
 
   const confirmDelete = (): void => {
-    if (!pendingDeleteBook) return;
-    library.removeBook(pendingDeleteBook.id);
-    setMessage(`已删除《${pendingDeleteBook.title}》`);
+    if (!pendingDeleteBookId) return;
+    controller.deleteBook(pendingDeleteBookId).catch(() => {});
     setPendingDeleteBookId(null);
     navigate("/library");
   };
+
+  const nonBlockingIssues = controller.issues.filter((i) => !i.blocking);
 
   return (
     <>
       <AppHeader
         pathname={pathname}
-        library={library}
+        books={controller.books}
+        currentBookId={currentBookId}
         onNavigate={navigate}
+        onSelectBook={handleSelectBook}
         onImport={() => fileInputRef.current?.click()}
         onAbout={() => setAboutOpen(true)}
       />
@@ -55,26 +58,36 @@ export function App() {
         accept=".epub,application/epub+zip"
         onChange={handleImport}
       />
+      {controller.state.status === "importing" && (
+        <ImportStatus progress={controller.state.progress} />
+      )}
+      {controller.state.status === "error" && (
+        <ImportError issues={controller.state.issues} />
+      )}
+      {nonBlockingIssues.length > 0 && controller.state.status !== "error" && (
+        <ImportError issues={nonBlockingIssues} />
+      )}
       {pathname === "/library" ? (
         <LibraryPage
-          library={library}
-          onOpen={(id) => {
-            library.selectBook(id);
-            navigate("/");
+          books={controller.books}
+          onOpen={(bookId) => {
+            controller.openBook(bookId).then(() => navigate("/")).catch(() => {});
           }}
           onRequestDelete={setPendingDeleteBookId}
           onImport={() => fileInputRef.current?.click()}
         />
       ) : (
-        <ReaderPage currentBook={library.currentBook} onOpenLibrary={() => navigate("/library")} />
-      )}
-      {(message || library.notice) && (
-        <div className="status-message" role="status" aria-live="polite">
-          {message || library.notice}
-        </div>
+        <ReaderPage
+          publication={controller.state.status === "ready" ? controller.state.inspection : null}
+          chapter={controller.state.status === "ready" ? controller.state.chapter : null}
+          locator={controller.state.status === "ready" ? controller.state.location.locator : null}
+          temporary={controller.state.status === "ready" ? controller.state.temporary : false}
+          onOpenTarget={controller.openTarget}
+          onOpenLibrary={() => navigate("/library")}
+        />
       )}
       <ConfirmDialog
-        book={pendingDeleteBook}
+        book={pendingDeleteBook ? { title: pendingDeleteBook.metadata.title } : null}
         onCancel={() => setPendingDeleteBookId(null)}
         onConfirm={confirmDelete}
       />

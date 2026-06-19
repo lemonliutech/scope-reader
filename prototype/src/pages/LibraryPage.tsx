@@ -1,43 +1,59 @@
 import { FileArrowUp, MagnifyingGlass, Trash } from "@phosphor-icons/react";
 import { useMemo, useState } from "react";
-import type { FormatFilter, SortBy } from "../data/demoBooks";
-import type { LibraryController } from "../library/useLibrary";
-import { filterAndSortBooks } from "../library/libraryStore";
+import { CoverImage } from "../components/CoverImage";
+import type { LibraryBook } from "../storage/schema";
+
+type FormatFilter = "ALL" | "EPUB";
+type SortBy = "LAST_READ_DESC" | "IMPORTED_DESC" | "TITLE_ASC";
 
 type LibraryPageProps = {
-  library: Pick<LibraryController, "books">;
-  onOpen: (id: string) => void;
-  onRequestDelete: (id: string) => void;
+  books: LibraryBook[];
+  onOpen: (bookId: string) => void;
+  onRequestDelete: (bookId: string) => void;
   onImport: () => void;
 };
 
-function readLabel(value: string | null): string {
-  if (!value) return "未开始";
-  return new Intl.DateTimeFormat("zh-CN", { month: "short", day: "numeric" }).format(
-    new Date(value),
-  );
+function filterAndSort(books: readonly LibraryBook[], query: string, formatFilter: FormatFilter, sortBy: SortBy): LibraryBook[] {
+  const q = query.trim().toLocaleLowerCase("zh-CN");
+  const filtered = books.filter((book) => {
+    const haystack = `${book.metadata.title} ${book.metadata.authors[0] ?? ""}`.toLocaleLowerCase("zh-CN");
+    const matchesQuery = !q || haystack.includes(q);
+    const matchesFormat = formatFilter === "ALL" || true;
+    return matchesQuery && matchesFormat;
+  });
+
+  return [...filtered].sort((a, b) => {
+    if (sortBy === "TITLE_ASC") return a.metadata.title.localeCompare(b.metadata.title, "zh-CN");
+    if (sortBy === "IMPORTED_DESC") return b.importedAt.localeCompare(a.importedAt);
+    if (a.lastOpenedAt && b.lastOpenedAt) return b.lastOpenedAt.localeCompare(a.lastOpenedAt);
+    if (a.lastOpenedAt) return -1;
+    if (b.lastOpenedAt) return 1;
+    return b.importedAt.localeCompare(a.importedAt);
+  });
 }
 
-export function LibraryPage({
-  library,
-  onOpen,
-  onRequestDelete,
-  onImport,
-}: LibraryPageProps) {
+function readLabel(value: string | null): string {
+  if (!value) return "未开始";
+  return new Intl.DateTimeFormat("zh-CN", { month: "short", day: "numeric" }).format(new Date(value));
+}
+
+export function LibraryPage({ books, onOpen, onRequestDelete, onImport }: LibraryPageProps) {
   const [query, setQuery] = useState("");
   const [formatFilter, setFormatFilter] = useState<FormatFilter>("ALL");
   const [sortBy, setSortBy] = useState<SortBy>("LAST_READ_DESC");
-  const books = useMemo(
-    () => filterAndSortBooks(library.books, { query, formatFilter, sortBy }),
-    [library.books, query, formatFilter, sortBy],
+
+  const filtered = useMemo(
+    () => filterAndSort(books, query, formatFilter, sortBy),
+    [books, query, formatFilter, sortBy],
   );
+
   const clear = (): void => {
     setQuery("");
     setFormatFilter("ALL");
     setSortBy("LAST_READ_DESC");
   };
 
-  if (library.books.length === 0) {
+  if (books.length === 0) {
     return (
       <main className="library-page library-empty">
         <h1>图书管理</h1>
@@ -54,7 +70,7 @@ export function LibraryPage({
       <header className="library-title">
         <div>
           <h1>图书管理</h1>
-          <p>共 {library.books.length} 本图书</p>
+          <p>共 {books.length} 本图书</p>
         </div>
       </header>
       <section className="library-tools" aria-label="筛选图书">
@@ -95,7 +111,7 @@ export function LibraryPage({
           <FileArrowUp size={17} />导入图书
         </button>
       </section>
-      {books.length === 0 ? (
+      {filtered.length === 0 ? (
         <section className="no-results">
           <h2>没有匹配的图书</h2>
           <p>换一个关键词，或清除筛选条件。</p>
@@ -106,30 +122,35 @@ export function LibraryPage({
           <div className="book-table-head" role="row">
             <span role="columnheader">图书</span>
             <span role="columnheader">格式</span>
-            <span role="columnheader">进度</span>
             <span role="columnheader">最近阅读</span>
             <span role="columnheader">操作</span>
           </div>
-          {books.map((book) => (
-            <div className="book-row" role="row" key={book.id}>
+          {filtered.map((book) => (
+            <div className="book-row" role="row" key={book.bookId}>
               <div className="book-title-cell" role="cell">
-                <span className="library-cover" aria-hidden="true">
-                  {book.coverUrl ? <img src={book.coverUrl} alt="" /> : book.title.slice(0, 1)}
+                <CoverImage cover={book.metadata.cover} title={book.metadata.title} className="library-cover" />
+                <span>
+                  <strong>{book.metadata.title}</strong>
+                  <small>
+                    {book.metadata.authors[0] ?? "未知作者"}
+                    {book.chapterCount > 0 && book.location.chapterIndex > 0 && (
+                      <> · {Math.min(100, Math.round((book.location.chapterIndex / book.chapterCount) * 100))}%</>
+                    )}
+                    {book.temporary && (
+                      <span className="book-temporary-badge"> · 本次进度无法保存</span>
+                    )}
+                  </small>
                 </span>
-                <span><strong>{book.title}</strong><small>{book.author}</small></span>
               </div>
-              <span role="cell" data-label="格式">{book.format}</span>
-              <span className="progress-cell" role="cell" data-label="进度">
-                <progress max="100" value={book.progress} />{book.progress}%
-              </span>
-              <time role="cell" data-label="最近阅读" dateTime={book.lastReadAt ?? book.importedAt}>
-                {readLabel(book.lastReadAt)}
+              <span role="cell" data-label="格式">EPUB</span>
+              <time role="cell" data-label="最近阅读" dateTime={book.lastOpenedAt ?? book.importedAt}>
+                {readLabel(book.lastOpenedAt)}
               </time>
               <div role="cell" className="book-actions">
-                <button type="button" onClick={() => onOpen(book.id)} aria-label={`继续阅读《${book.title}》`}>
+                <button type="button" onClick={() => onOpen(book.bookId)} aria-label={`继续阅读《${book.metadata.title}》`}>
                   继续阅读
                 </button>
-                <button type="button" onClick={() => onRequestDelete(book.id)} aria-label={`删除《${book.title}》`}>
+                <button type="button" onClick={() => onRequestDelete(book.bookId)} aria-label={`删除《${book.metadata.title}》`}>
                   <Trash size={15} />删除
                 </button>
               </div>

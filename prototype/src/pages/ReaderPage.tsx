@@ -1,93 +1,44 @@
-import { CaretDown, CaretRight, List, X } from "@phosphor-icons/react";
-import { useMemo, useRef, useState } from "react";
-import type { LocalBook } from "../data/demoBooks";
+import { ArrowLeft, ArrowRight, List, X } from "@phosphor-icons/react";
+import { useState } from "react";
+import { ChapterFrame } from "../components/ChapterFrame";
+import type {
+  ChapterDocument,
+  NavigationNode,
+  PublicationInspection,
+  PublicationTarget,
+  ReaderPreferences,
+} from "../domain/publication";
 
-type Part = { id: string; title: string; chapters: string[] };
-type ChapterContent = { subtitle: string; intro: string[] };
-type TreeGroupProps = { part: Part; active: string; onSelect: (title: string) => void };
-type ReaderPageProps = { currentBook: LocalBook | null; onOpenLibrary: () => void };
+const DEFAULT_PREFS: ReaderPreferences = { fontSize: 16, lineHeight: 1.6, theme: "LIGHT" };
 
-const parts: Part[] = [
-  { id: "preface", title: "前言", chapters: [] },
-  {
-    id: "cognitive",
-    title: "第一部分 认知革命",
-    chapters: ["第1章 认知革命", "第2章 知善恶树", "第3章 亚当和夏娃的一天"],
-  },
-  {
-    id: "agriculture",
-    title: "第二部分 农业革命",
-    chapters: ["第4章 历史上最大的骗局", "第5章 金钱的气味", "第6章 帝国的愿景"],
-  },
-  {
-    id: "unification",
-    title: "第三部分 人类的融合统一",
-    chapters: ["第7章 科学与帝国的结合", "第8章 资本主义教条", "第9章 追求永生"],
-  },
-  {
-    id: "science",
-    title: "第四部分 科学革命",
-    chapters: ["第10章 科学的梦想", "第11章 无知之墙", "第12章 公平正义"],
-  },
-  {
-    id: "modern",
-    title: "第五部分 现代的困境",
-    chapters: ["第13章 幸福的工业", "第14章 自由的悖论", "第15章 意义的追寻"],
-  },
-];
-
-const paragraphs: Record<string, ChapterContent> = {
-  "第1章 认知革命": {
-    subtitle: "第一部分 认知革命",
-    intro: [
-      "大约七万年前，地球上至少有六个人种：非洲的智人、亚洲的直立人、欧洲的尼安德特人，以及丹尼索瓦人。此后，这些人种中只剩下智人这一种，并且成为人类谱系中唯一延续至今的分支。",
-      "这并非因为智人比其他人更强壮、更聪明或更有创造力。事实上，我们的祖先在智力和体力方面都不如尼安德特人。那么为什么最终是我们继承了这个世界？答案只有一个：我们是唯一掌握了大规模合作的物种。",
-    ],
-  },
-  "第2章 知善恶树": {
-    subtitle: "第一部分 认知革命",
-    intro: [
-      "语言让智人能够分享关于世界的信息，也让我们开始谈论并不存在于眼前的事物。共同相信的故事，把互不相识的人连接到一起。",
-      "神话、国家、法律与货币并非自然界中的实体，却能协调无数人的行动。虚构不是谎言，而是一套让群体稳定合作的共同协议。",
-    ],
-  },
-  "第3章 亚当和夏娃的一天": {
-    subtitle: "第一部分 认知革命",
-    intro: [
-      "采集社会留下的文字记录很少，但他们的生活并不等于贫乏。对季节、植物和动物的细密知识，构成了另一种复杂文明。",
-      "理解他们的一天，不能只从现代人的效率尺度出发。劳动、迁徙、社交与仪式，共同塑造了早期人类的时间。",
-    ],
-  },
+type ReaderPageProps = {
+  publication: PublicationInspection | null;
+  chapter: ChapterDocument | null;
+  locator: string | null;
+  temporary: boolean;
+  onOpenTarget: (target: PublicationTarget) => void;
+  onOpenLibrary: () => void;
 };
 
-function TreeGroup({ part, active, onSelect }: TreeGroupProps) {
-  const [open, setOpen] = useState(part.id !== "preface");
-  const hasChildren = part.chapters.length > 0;
+type NavNodeProps = { node: NavigationNode; onSelect: (target: PublicationTarget) => void };
+
+function NavNode({ node, onSelect }: NavNodeProps) {
+  const [open, setOpen] = useState(true);
+  const hasChildren = node.children.length > 0;
   return (
     <li className="tree-group">
       <button
-        className="tree-parent"
         type="button"
-        onClick={() => (hasChildren ? setOpen((value) => !value) : onSelect(part.title))}
+        className={hasChildren ? "tree-parent" : "tree-link"}
+        onClick={() => (hasChildren ? setOpen((v) => !v) : onSelect(node.target))}
         aria-expanded={hasChildren ? open : undefined}
       >
-        {hasChildren ? (
-          open ? <CaretDown size={14} weight="bold" /> : <CaretRight size={14} weight="bold" />
-        ) : <span className="tree-icon-spacer" />}
-        <span>{part.title}</span>
+        {node.label}
       </button>
       {hasChildren && open && (
         <ul className="tree-children">
-          {part.chapters.map((chapter) => (
-            <li key={chapter}>
-              <button
-                type="button"
-                className={chapter === active ? "tree-link is-active" : "tree-link"}
-                onClick={() => onSelect(chapter)}
-              >
-                {chapter}
-              </button>
-            </li>
+          {node.children.map((child) => (
+            <NavNode key={child.id} node={child} onSelect={onSelect} />
           ))}
         </ul>
       )}
@@ -95,16 +46,11 @@ function TreeGroup({ part, active, onSelect }: TreeGroupProps) {
   );
 }
 
-export function ReaderPage({ currentBook, onOpenLibrary }: ReaderPageProps) {
-  const [activeChapter, setActiveChapter] = useState("第1章 认知革命");
+export function ReaderPage({ publication, chapter, locator, temporary, onOpenTarget, onOpenLibrary }: ReaderPageProps) {
   const [outlineOpen, setOutlineOpen] = useState(false);
-  const articleRef = useRef<HTMLElement>(null);
-  const chapter = useMemo(
-    () => paragraphs[activeChapter] ?? paragraphs["第1章 认知革命"]!,
-    [activeChapter],
-  );
+  const anchor = locator?.split("#")[1] ?? null;
 
-  if (!currentBook) {
+  if (!publication) {
     return (
       <main className="reader-empty">
         <h1>还没有打开图书</h1>
@@ -113,84 +59,127 @@ export function ReaderPage({ currentBook, onOpenLibrary }: ReaderPageProps) {
     );
   }
 
-  const selectChapter = (title: string): void => {
-    if (paragraphs[title]) setActiveChapter(title);
+  const handleSelect = (target: PublicationTarget): void => {
+    onOpenTarget(target);
     setOutlineOpen(false);
-    requestAnimationFrame(() => articleRef.current?.scrollIntoView({ behavior: "smooth" }));
   };
+
+  // Compute prev/next from linear reading order
+  const linearOrder = publication.readingOrder.filter((item) => item.linear);
+  const currentIndex = chapter
+    ? linearOrder.findIndex((item) => item.target.locator === chapter.id)
+    : -1;
+  const prevItem = currentIndex > 0 ? linearOrder[currentIndex - 1] : null;
+  const nextItem =
+    currentIndex >= 0 && currentIndex < linearOrder.length - 1
+      ? linearOrder[currentIndex + 1]
+      : null;
 
   return (
     <>
+      {temporary && (
+        <div className="reader-notice" role="status">本次进度无法保存</div>
+      )}
       <button className="mobile-outline-trigger" type="button" onClick={() => setOutlineOpen(true)}>
         <List size={18} />目录
       </button>
       <main id="top" className="reader-grid" data-testid="reader-grid">
-        <article ref={articleRef} className="article" data-testid="article-column">
-          <nav className="breadcrumbs" aria-label="章节路径">
-            <a href="#top">首页</a><span>›</span>
-            <a href="#top">{currentBook.title}</a><span>›</span>
-            <a href="#top">{chapter.subtitle}</a><span>›</span>
-            <span>{activeChapter}</span>
+        <article className="article" data-testid="article-column">
+          {chapter ? (
+            <ChapterFrame
+              chapter={chapter}
+              preferences={DEFAULT_PREFS}
+              anchor={anchor}
+              onDispose={() => {}}
+              onExternalLink={(url) => window.open(url, "_blank", "noopener,noreferrer")}
+            />
+          ) : (
+            <div className="chapter-placeholder">
+              <p>请从目录中选择一章</p>
+            </div>
+          )}
+          <nav className="chapter-nav" aria-label="章节翻页">
+            <button
+              type="button"
+              className="chapter-nav-btn"
+              disabled={!prevItem}
+              onClick={() => prevItem && handleSelect(prevItem.target)}
+              aria-label={prevItem ? `上一章：${prevItem.label}` : "已是第一章"}
+            >
+              <ArrowLeft size={16} />
+              <span className="chapter-nav-label">{prevItem ? prevItem.label : "—"}</span>
+            </button>
+            <span className="chapter-nav-sep" />
+            <button
+              type="button"
+              className="chapter-nav-btn chapter-nav-btn--next"
+              disabled={!nextItem}
+              onClick={() => nextItem && handleSelect(nextItem.target)}
+              aria-label={nextItem ? `下一章：${nextItem.label}` : "已是最后一章"}
+            >
+              <span className="chapter-nav-label">{nextItem ? nextItem.label : "—"}</span>
+              <ArrowRight size={16} />
+            </button>
           </nav>
-          <h1>{activeChapter}</h1>
-          <p className="chapter-part">{chapter.subtitle}</p>
-          {chapter.intro.map((text) => <p key={text}>{text}</p>)}
-          <blockquote>
-            合作的能力，让我们能够做出单靠个人无法完成的事情；合作的规模，让我们能够动员群体，完成其他动物望尘莫及的壮举。<sup><a href="#note-1">[1]</a></sup>
-          </blockquote>
-          <section id="stories">
-            <h2>故事的力量</h2>
-            <p>大约七万年前，智人已经在地球上生存了二十多万年。我们和其他人种的体型并无二致，生活在同样的生态环境中，为什么对其他人种来说是致命的竞争，在我们这里却变成了合作的机会？</p>
-            <p>其中一个重要原因，是我们发明了一种独特的交流方式：虚构的故事。</p>
-            <p>这听起来或许令人惊讶，但请想一想，我们生活在一个充满了人类虚构故事的世界里：国家、公司、法律、货币、人权、神、民族、自由市场……这些都是存在于集体想象中的故事。然而，正是这些故事，让我们能够凭借共同信念进行大规模协作。<sup><a href="#note-2">[2]</a></sup></p>
-            <p>我们相信共同想象的故事，即便从未谋面的陌生人之间，也能建立信任与合作。</p>
-          </section>
-          <section id="tribes">
-            <h2>从部落到国家</h2>
-            <p>早期的人类小群体通常由几十个成员组成，彼此之间需要面对面交流，才能建立信任。但随着故事的出现，人类开始能够在更大规模上协作。</p>
-            <p>例如，一面旗帜、一个国歌、一个共同的神话，就能把成千上万的陌生人凝聚在一起，为了共同的目标而奋斗。这种能力彻底改变了人类的历史轨迹，使我们能够建造城市、帝国，甚至探索宇宙。<sup><a href="#note-3">[3]</a></sup></p>
-            <p>故事的力量并不在于它是否真实，而在于人们是否共同相信它。一旦足够多的人相信某个故事，它就会在现实世界中产生真实的力量。</p>
-          </section>
-          <section id="notes" className="notes">
-            <h2>注释</h2>
-            <ol>
-              <li id="note-1">群体协作规模与认知能力之间存在持续的相互影响。</li>
-              <li id="note-2">共同想象是社会制度得以延续的基础之一。</li>
-              <li id="note-3">章节内容为界面原型演示文本。</li>
-            </ol>
-          </section>
         </article>
         <aside className={outlineOpen ? "outline is-open" : "outline"} data-testid="outline-column">
-          <button className="drawer-close" type="button" onClick={() => setOutlineOpen(false)} aria-label="关闭目录">
+          <button
+            className="drawer-close"
+            type="button"
+            onClick={() => setOutlineOpen(false)}
+            aria-label="关闭目录"
+          >
             <X size={20} />
           </button>
           <div className="book-meta">
-            {currentBook.coverUrl ? (
-              <img src={currentBook.coverUrl} alt={`《${currentBook.title}》封面`} />
+            {publication.metadata.cover ? (
+              <img
+                src={URL.createObjectURL(publication.metadata.cover)}
+                alt={`《${publication.metadata.title}》封面`}
+              />
             ) : (
-              <div className="cover-placeholder" aria-hidden="true">{currentBook.title.slice(0, 1)}</div>
+              <div className="cover-placeholder" aria-hidden="true">
+                {publication.metadata.title.slice(0, 1)}
+              </div>
             )}
             <div>
-              <h2>{currentBook.title}</h2>
-              <p>{currentBook.author}</p>
-              <p>本地文件：{currentBook.title}.epub</p>
-              <p>已读 {currentBook.progress}%</p>
+              <h2>{publication.metadata.title}</h2>
+              <p>{publication.metadata.authors[0] ?? "未知作者"}</p>
             </div>
           </div>
           <div className="outline-heading">目录</div>
           <nav aria-label="本书章节">
-            <ul className="chapter-tree">
-              {parts.map((part) => (
-                <TreeGroup key={part.id} part={part} active={activeChapter} onSelect={selectChapter} />
-              ))}
-              <li><button className="tree-parent tree-leaf" type="button">后记</button></li>
-              <li><button className="tree-parent tree-leaf" type="button">致谢</button></li>
-            </ul>
+            {publication.navigation.length > 0 ? (
+              <ul className="chapter-tree">
+                {publication.navigation.map((node) => (
+                  <NavNode key={node.id} node={node} onSelect={handleSelect} />
+                ))}
+              </ul>
+            ) : (
+              <ul className="chapter-tree">
+                {publication.readingOrder.map((item) => (
+                  <li key={item.id}>
+                    <button
+                      type="button"
+                      className="tree-link"
+                      onClick={() => handleSelect(item.target)}
+                    >
+                      {item.label}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
           </nav>
         </aside>
       </main>
       {outlineOpen && (
-        <button className="drawer-backdrop" type="button" aria-label="关闭目录" onClick={() => setOutlineOpen(false)} />
+        <button
+          className="drawer-backdrop"
+          type="button"
+          aria-label="关闭目录"
+          onClick={() => setOutlineOpen(false)}
+        />
       )}
     </>
   );

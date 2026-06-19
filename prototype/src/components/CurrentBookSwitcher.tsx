@@ -1,22 +1,21 @@
 import { CaretDown, FileArrowUp } from "@phosphor-icons/react";
 import { useEffect, useRef, useState } from "react";
-import type { LocalBook } from "../data/demoBooks";
+import type { LibraryBook } from "../storage/schema";
 
 type CurrentBookSwitcherProps = {
-  currentBook: LocalBook | null;
-  recentBooks: LocalBook[];
+  currentBookId: string | null;
+  books: LibraryBook[];
   onSelect: (id: string) => void;
   onImport: () => void;
 };
 
-export function CurrentBookSwitcher({
-  currentBook,
-  recentBooks,
-  onSelect,
-  onImport,
-}: CurrentBookSwitcherProps) {
+export function CurrentBookSwitcher({ currentBookId, books, onSelect, onImport }: CurrentBookSwitcherProps) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
+  const currentBook = books.find((b) => b.bookId === currentBookId) ?? null;
+  const recentBooks = [...books]
+    .sort((a, b) => (b.lastOpenedAt ?? "").localeCompare(a.lastOpenedAt ?? ""))
+    .slice(0, 5);
 
   useEffect(() => {
     const close = (event: PointerEvent): void => {
@@ -42,20 +41,9 @@ export function CurrentBookSwitcher({
         aria-haspopup="menu"
         onClick={() => setOpen((value) => !value)}
       >
-        {currentBook?.coverUrl ? (
-          <img src={currentBook.coverUrl} alt="" />
-        ) : (
-          <span className="cover-fallback" aria-hidden="true">
-            {currentBook?.title.slice(0, 1) ?? "书"}
-          </span>
-        )}
         <span className="book-switcher-copy">
-          <strong>{currentBook?.title ?? "选择一本图书"}</strong>
-          <small>
-            {currentBook
-              ? `${currentBook.format} · 已读 ${currentBook.progress}%`
-              : "从本地导入 EPUB"}
-          </small>
+          <strong>{currentBook?.metadata.title ?? "选择一本图书"}</strong>
+          <small>{currentBook ? "EPUB" : "从本地导入 EPUB"}</small>
         </span>
         <CaretDown className="book-switcher-caret" size={16} />
       </button>
@@ -66,15 +54,14 @@ export function CurrentBookSwitcher({
             <button
               role="menuitem"
               type="button"
-              key={book.id}
-              className={book.id === currentBook?.id ? "is-current" : undefined}
+              key={book.bookId}
+              className={book.bookId === currentBookId ? "is-current" : undefined}
               onClick={() => {
-                onSelect(book.id);
+                onSelect(book.bookId);
                 setOpen(false);
               }}
             >
-              <span>{book.title}</span>
-              <small>{book.progress}%</small>
+              <span>{book.metadata.title}</span>
             </button>
           ))}
           <button

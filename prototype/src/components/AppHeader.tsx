@@ -1,25 +1,17 @@
+import type { LibraryBook } from "../storage/schema";
 import { CurrentBookSwitcher } from "./CurrentBookSwitcher";
-import type { LibraryController } from "../library/useLibrary";
 
 type AppHeaderProps = {
   pathname: string;
-  library: LibraryController;
+  books: LibraryBook[];
+  currentBookId: string | null;
   onNavigate: (path: string) => void;
+  onSelectBook: (bookId: string) => void;
   onImport: () => void;
   onAbout: () => void;
 };
 
-export function AppHeader({
-  pathname,
-  library,
-  onNavigate,
-  onImport,
-  onAbout,
-}: AppHeaderProps) {
-  const recentBooks = [...library.books]
-    .sort((a, b) => (b.lastReadAt ?? "").localeCompare(a.lastReadAt ?? ""))
-    .slice(0, 5);
-
+export function AppHeader({ pathname, books, currentBookId, onNavigate, onSelectBook, onImport, onAbout }: AppHeaderProps) {
   return (
     <header className="topbar">
       <div className="topbar-inner">
@@ -27,12 +19,9 @@ export function AppHeader({
           Scope
         </button>
         <CurrentBookSwitcher
-          currentBook={library.currentBook}
-          recentBooks={recentBooks}
-          onSelect={(id) => {
-            library.selectBook(id);
-            onNavigate("/");
-          }}
+          currentBookId={currentBookId}
+          books={books}
+          onSelect={onSelectBook}
           onImport={onImport}
         />
         <nav className="top-actions" aria-label="页面操作">
