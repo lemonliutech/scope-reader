@@ -77,6 +77,10 @@ export function App() {
           onRequestDelete={setPendingDeleteBookId}
           onImport={() => fileInputRef.current?.click()}
         />
+      ) : controller.state.status === "loading" ? (
+        <main className="reader-empty">
+          <p>正在加载…</p>
+        </main>
       ) : (
         <ReaderPage
           publication={controller.state.status === "ready" ? controller.state.inspection : null}

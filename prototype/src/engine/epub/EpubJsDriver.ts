@@ -112,7 +112,7 @@ export class EpubJsDriver {
 
     const rewrite = (el: Element, attr: string) => {
       const raw = el.getAttribute(attr);
-      if (!raw || raw.startsWith("http") || raw.startsWith("//") || raw.startsWith("data:") || raw.startsWith("#")) return;
+      if (!raw || /^https?:\/\//i.test(raw) || raw.startsWith("//") || raw.startsWith("data:") || raw.startsWith("blob:") || raw.startsWith("#")) return;
       const [filePart, fragment] = raw.split("#");
       const abs = resolveHref(chapterDir, filePart ?? raw);
       const mt = guessMimeType(abs);
@@ -347,7 +347,7 @@ function buildInspection(
 /** Resolve a relative href against a base directory path */
 function resolveHref(base: string, href: string): string {
   if (href.startsWith("/")) return href.slice(1);
-  if (href.startsWith("http") || href.startsWith("data:") || href.startsWith("blob:")) return href;
+  if (/^https?:\/\//i.test(href) || href.startsWith("data:") || href.startsWith("blob:")) return href;
 
   const parts = (base + href).split("/");
   const resolved: string[] = [];

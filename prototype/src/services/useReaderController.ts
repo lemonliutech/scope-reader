@@ -8,6 +8,7 @@ import { IndexedDbLibraryRepository } from "../storage/IndexedDbLibraryRepositor
 import type { LibraryBook } from "../storage/schema";
 import { ReaderService, type ImportProgress } from "./ReaderService";
 
+type LoadingState = { status: "loading" };
 type IdleState = { status: "idle" };
 type ImportingState = { status: "importing"; progress: ImportProgress | null };
 type ReadyState = {
@@ -20,7 +21,7 @@ type ReadyState = {
 };
 type ErrorState = { status: "error"; issues: ScopeIssue[] };
 
-type ControllerState = IdleState | ImportingState | ReadyState | ErrorState;
+type ControllerState = LoadingState | IdleState | ImportingState | ReadyState | ErrorState;
 
 export type ReaderController = {
   state: ControllerState;
@@ -45,7 +46,7 @@ export function useReaderController(): ReaderController {
     ),
   );
 
-  const [controllerState, setControllerState] = useState<ControllerState>({ status: "idle" });
+  const [controllerState, setControllerState] = useState<ControllerState>({ status: "loading" });
   const [books, setBooks] = useState<LibraryBook[]>([]);
   const [booksLoaded, setBooksLoaded] = useState(false);
   const [issues, setIssues] = useState<ScopeIssue[]>([]);
@@ -55,7 +56,9 @@ export function useReaderController(): ReaderController {
     repoRef.current.listBooks().then((list) => { setBooks(list); setBooksLoaded(true); }).catch(() => { setBooksLoaded(true); });
 
     const lastBookId = localStorage.getItem(LAST_BOOK_KEY);
-    if (lastBookId) {
+    if (!lastBookId) {
+      setControllerState({ status: "idle" });
+    } else {
       void (async () => {
         try {
           const pub = await serviceRef.current.openBook(lastBookId);
@@ -77,6 +80,7 @@ export function useReaderController(): ReaderController {
           setBooks(freshBooks);
         } catch {
           localStorage.removeItem(LAST_BOOK_KEY);
+          setControllerState({ status: "idle" });
         }
       })();
     }
