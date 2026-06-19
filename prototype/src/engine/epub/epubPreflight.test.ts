@@ -49,4 +49,26 @@ describe("preflightEpub", () => {
       expect.arrayContaining(["ZIP_BOMB_SUSPECTED", "MIMETYPE_MISSING"]),
     );
   });
+
+  it("preserves mimetype issues when local ZIP data cannot be decompressed", () => {
+    const corruptedArchive = zipSync({
+      "content.txt": new TextEncoder().encode("chapter content ".repeat(100)),
+    });
+    const view = new DataView(
+      corruptedArchive.buffer,
+      corruptedArchive.byteOffset,
+      corruptedArchive.byteLength,
+    );
+    const compressedSize = view.getUint32(18, true);
+    const nameLength = view.getUint16(26, true);
+    const extraLength = view.getUint16(28, true);
+    const compressedDataOffset = 30 + nameLength + extraLength;
+    corruptedArchive.fill(0xff, compressedDataOffset, compressedDataOffset + compressedSize);
+
+    const result = preflightEpub(corruptedArchive);
+
+    expect(result.issues.map(({ code }) => code)).toEqual(
+      expect.arrayContaining(["MIMETYPE_MISSING", "ZIP_INVALID"]),
+    );
+  });
 });

@@ -64,7 +64,7 @@ export function preflightEpub(bytes: Uint8Array): EpubPreflight {
     return {
       packagePath: null,
       entries: new Map(),
-      issues: [issue("ZIP_INVALID", "INSPECT_PUBLICATION", true, errorDetails(error))],
+      issues: [...issues, issue("ZIP_INVALID", "INSPECT_PUBLICATION", true, errorDetails(error))],
     };
   }
 
