@@ -53,9 +53,17 @@ export class EpubEngineAdapter implements PublicationEngine {
   constructor(private readonly driverFactory: () => EpubJsDriver) {}
 
   async canOpen(source: PublicationSource) {
-    const preflight = preflightEpub(new Uint8Array(source.data));
-    if (!preflight.issues.some((item) => EPUB_CONTAINER_CODES.has(item.code))) return 100;
-    return hasEpubExtension(source.fileName) ? 20 : 0;
+    const bytes = new Uint8Array(source.data);
+    const preflight = preflightEpub(bytes);
+    const codes = preflight.issues.map((i) => i.code);
+    const hasContainerIssue = preflight.issues.some((item) => EPUB_CONTAINER_CODES.has(item.code));
+    const hasEpub = hasEpubExtension(source.fileName);
+    const confidence = !hasContainerIssue ? 100 : hasEpub ? 20 : 0;
+    console.debug("[EpubEngineAdapter.canOpen]", {
+      fileName: source.fileName, byteLength: bytes.byteLength,
+      issues: codes, hasContainerIssue, hasEpub, confidence,
+    });
+    return confidence;
   }
 
   async inspect(source: PublicationSource): Promise<PublicationInspection> {
