@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ChapterDocument, NavigationNode, PublicationInspection, PublicationLocation, PublicationTarget } from "../domain/publication";
-import type { ScopeIssue } from "../domain/scopeError";
+import { issue, type ScopeIssue } from "../domain/scopeError";
 import { EpubEngineAdapter } from "../engine/epub/EpubEngineAdapter";
 import { EpubJsDriver } from "../engine/epub/EpubJsDriver";
 import { PublicationEngineRegistry } from "../engine/PublicationEngineRegistry";
@@ -33,6 +33,7 @@ export type ReaderController = {
   openBook: (bookId: string) => Promise<void>;
   openTarget: (target: PublicationTarget) => Promise<void>;
   deleteBook: (bookId: string) => Promise<void>;
+  dismissIssues: () => void;
 };
 
 const LAST_BOOK_KEY = "scope:lastBookId";
@@ -50,6 +51,7 @@ export function useReaderController(): ReaderController {
   const [books, setBooks] = useState<LibraryBook[]>([]);
   const [booksLoaded, setBooksLoaded] = useState(false);
   const [issues, setIssues] = useState<ScopeIssue[]>([]);
+  const busyRef = useRef(false);
 
   // Load library and restore last-opened book on mount
   useEffect(() => {
@@ -100,6 +102,8 @@ export function useReaderController(): ReaderController {
   }, []);
 
   const importFile = useCallback(async (file: File): Promise<boolean> => {
+    if (busyRef.current) return false;
+    busyRef.current = true;
     setControllerState({ status: "importing", progress: null });
     setIssues([]);
 
@@ -111,6 +115,7 @@ export function useReaderController(): ReaderController {
 
     if (result.bookId === null || result.inspection === null) {
       setControllerState({ status: "error", issues: result.issues });
+      busyRef.current = false;
       return false;
     }
 
@@ -140,15 +145,17 @@ export function useReaderController(): ReaderController {
       localStorage.setItem(LAST_BOOK_KEY, result.bookId);
       await refreshBooks();
     }
+    busyRef.current = false;
     return true;
   }, [refreshBooks]);
 
   const openBook = useCallback(async (bookId: string) => {
+    if (busyRef.current) return;
+    busyRef.current = true;
     setIssues([]);
     try {
       const pub = await serviceRef.current.openBook(bookId);
 
-      // Restore the saved chapter; fall back to the first chapter on failure
       const restoreLocator = pub.location.locator || pub.inspection.readingOrder[0]?.target.locator;
       const restoreTarget = restoreLocator ? { format: "EPUB" as const, locator: restoreLocator } : null;
       let restoredChapter: ChapterDocument | null = null;
@@ -174,24 +181,29 @@ export function useReaderController(): ReaderController {
       });
     } catch {
       setControllerState({ status: "idle" });
+    } finally {
+      busyRef.current = false;
     }
   }, []);
 
   const openTarget = useCallback(async (target: PublicationTarget) => {
-    const chapter = await serviceRef.current.loadChapter(target);
-    // Session updates its internal location after loadChapter (with correct chapterIndex)
-    const location = serviceRef.current.getLocation() ?? {
-      format: target.format,
-      locator: target.locator,
-      chapterIndex: 0,
-      scrollRatio: 0,
-    };
-    await serviceRef.current.saveLocation(location);
+    try {
+      const chapter = await serviceRef.current.loadChapter(target);
+      const location = serviceRef.current.getLocation() ?? {
+        format: target.format,
+        locator: target.locator,
+        chapterIndex: 0,
+        scrollRatio: 0,
+      };
+      await serviceRef.current.saveLocation(location);
 
-    setControllerState((prev) => {
-      if (prev.status !== "ready") return prev;
-      return { ...prev, chapter, location };
-    });
+      setControllerState((prev) => {
+        if (prev.status !== "ready") return prev;
+        return { ...prev, chapter, location };
+      });
+    } catch {
+      setIssues([issue("RESOURCE_MISSING", "LOAD_CHAPTER", false, { locator: target.locator })]);
+    }
   }, []);
 
   const deleteBook = useCallback(async (bookId: string) => {
@@ -209,5 +221,10 @@ export function useReaderController(): ReaderController {
     return controllerState.inspection.navigation;
   }, [controllerState]);
 
-  return { state: controllerState, books, booksLoaded, issues, navigation, importFile, openBook, openTarget, deleteBook };
+  const dismissIssues = useCallback(() => {
+    setIssues([]);
+    if (controllerState.status === "error") setControllerState({ status: "idle" });
+  }, [controllerState.status]);
+
+  return { state: controllerState, books, booksLoaded, issues, navigation, importFile, openBook, openTarget, deleteBook, dismissIssues };
 }

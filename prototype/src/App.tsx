@@ -62,10 +62,10 @@ export function App() {
         <ImportStatus progress={controller.state.progress} />
       )}
       {controller.state.status === "error" && (
-        <ImportError issues={controller.state.issues} />
+        <ImportError issues={controller.state.issues} onDismiss={controller.dismissIssues} />
       )}
       {nonBlockingIssues.length > 0 && controller.state.status !== "error" && (
-        <ImportError issues={nonBlockingIssues} />
+        <ImportError issues={nonBlockingIssues} onDismiss={controller.dismissIssues} />
       )}
       {pathname === "/library" ? (
         <LibraryPage

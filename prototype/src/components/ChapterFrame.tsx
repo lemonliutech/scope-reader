@@ -22,14 +22,19 @@ export function ChapterFrame({ chapter, preferences, anchor, onExternalLink, onI
   // Keep chapter baseUrl in a ref for the link handler
   const chapterBaseUrlRef = useRef(chapter.baseUrl);
   chapterBaseUrlRef.current = chapter.baseUrl;
+  // Track the current scoped <style> so we can always remove the previous one
+  const styleElRef = useRef<HTMLStyleElement | null>(null);
 
   // Inject sanitized body HTML and scoped EPUB styles when the chapter changes
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
 
+    // Remove previous chapter's style immediately
+    styleElRef.current?.remove();
+    styleElRef.current = null;
+
     let cancelled = false;
-    let styleEl: HTMLStyleElement | null = null;
 
     void (async () => {
       const { bodyHtml, inlineStyles, linkUrls } = parseChapter(chapter.html);
@@ -56,19 +61,15 @@ export function ChapterFrame({ chapter, preferences, anchor, onExternalLink, onI
 
       const allCss = [inlineStyles, fetchedCss].join("\n").trim();
       if (allCss) {
-        styleEl = document.createElement("style");
-        // @scope isolates EPUB CSS to .chapter-content without shadow DOM
-        // (Chrome 118+, Firefox 128+, Safari 17.4+; older browsers skip gracefully)
-        styleEl.textContent = `@scope (.chapter-content) {\n${allCss}\n}`;
-        document.head.appendChild(styleEl);
+        const style = document.createElement("style");
+        style.textContent = `@scope (.chapter-content) {\n${allCss}\n}`;
+        document.head.appendChild(style);
+        styleElRef.current = style;
       }
     })();
 
     return () => {
       cancelled = true;
-      styleEl?.remove();
-      // Do NOT clear innerHTML here — old content stays visible until new content is ready,
-      // preventing a blank flash between chapter switches.
     };
   }, [chapter.id]); // eslint-disable-line react-hooks/exhaustive-deps
 

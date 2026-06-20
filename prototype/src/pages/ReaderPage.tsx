@@ -1,6 +1,7 @@
 import { ArrowLeft, ArrowRight, BookOpen, FileArrowUp, List, X } from "@phosphor-icons/react";
 import { useState } from "react";
 import { ChapterFrame } from "../components/ChapterFrame";
+import { CoverImage } from "../components/CoverImage";
 import type {
   ChapterDocument,
   NavigationNode,
@@ -143,16 +144,7 @@ export function ReaderPage({ publication, chapter, locator, temporary, onOpenTar
             <X size={20} />
           </button>
           <div className="book-meta">
-            {publication.metadata.cover ? (
-              <img
-                src={URL.createObjectURL(publication.metadata.cover)}
-                alt={`《${publication.metadata.title}》封面`}
-              />
-            ) : (
-              <div className="cover-placeholder" aria-hidden="true">
-                {publication.metadata.title.slice(0, 1)}
-              </div>
-            )}
+            <CoverImage cover={publication.metadata.cover} title={publication.metadata.title} className="outline-cover" />
             <div>
               <h2>{publication.metadata.title}</h2>
               <p>{publication.metadata.authors[0] ?? "未知作者"}</p>

@@ -1,9 +1,10 @@
+import { X } from "@phosphor-icons/react";
 import { useEffect, useRef } from "react";
 import type { ScopeIssue } from "../domain/scopeError";
 
-type ImportErrorProps = { issues: ScopeIssue[] };
+type ImportErrorProps = { issues: ScopeIssue[]; onDismiss?: () => void };
 
-export function ImportError({ issues }: ImportErrorProps) {
+export function ImportError({ issues, onDismiss }: ImportErrorProps) {
   const ref = useRef<HTMLDivElement>(null);
   const blocking = issues.filter((i) => i.blocking);
   const warnings = issues.filter((i) => !i.blocking);
@@ -16,6 +17,11 @@ export function ImportError({ issues }: ImportErrorProps) {
 
   return (
     <div className="import-error-container">
+      {onDismiss && (
+        <button type="button" className="import-error-dismiss" onClick={onDismiss} aria-label="关闭提示">
+          <X size={16} />
+        </button>
+      )}
       {blocking.length > 0 && (
         <section
           ref={ref}
