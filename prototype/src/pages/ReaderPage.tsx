@@ -10,12 +10,11 @@ import type {
   ReaderPreferences,
 } from "../domain/publication";
 
-const DEFAULT_PREFS: ReaderPreferences = { fontSize: 16, lineHeight: 1.6, theme: "LIGHT" };
-
 type ReaderPageProps = {
   publication: PublicationInspection | null;
   chapter: ChapterDocument | null;
   locator: string | null;
+  preferences: ReaderPreferences;
   temporary: boolean;
   onOpenTarget: (target: PublicationTarget) => void;
   onOpenLibrary: () => void;
@@ -51,7 +50,7 @@ function NavNode({ node, onSelect }: NavNodeProps) {
   );
 }
 
-export function ReaderPage({ publication, chapter, locator, temporary, onOpenTarget, onOpenLibrary, onImport }: ReaderPageProps) {
+export function ReaderPage({ publication, chapter, locator, preferences, temporary, onOpenTarget, onOpenLibrary, onImport }: ReaderPageProps) {
   const [outlineOpen, setOutlineOpen] = useState(false);
   const anchor = locator?.split("#")[1] ?? null;
 
@@ -100,7 +99,7 @@ export function ReaderPage({ publication, chapter, locator, temporary, onOpenTar
           {chapter ? (
             <ChapterFrame
               chapter={chapter}
-              preferences={DEFAULT_PREFS}
+              preferences={preferences}
               anchor={anchor}
               onExternalLink={(url) => window.open(url, "_blank", "noopener,noreferrer")}
               onInternalLink={(locator) => handleSelect({ format: "EPUB", locator })}

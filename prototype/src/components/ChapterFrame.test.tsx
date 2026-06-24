@@ -85,4 +85,56 @@ describe("ChapterFrame", () => {
     });
     expect(onExternalLink).toHaveBeenCalledWith("https://example.com");
   });
+
+  it("adds dark theme overrides with Readium-style content CSS", async () => {
+    const darkPrefs: ReaderPreferences = { ...prefs, theme: "DARK" };
+    const chapter: ChapterDocument = {
+      id: "ch1",
+      title: "Chapter 1",
+      baseUrl: "",
+      warnings: [],
+      html: `<!DOCTYPE html><html><head>
+        <style>
+          code { padding: 2px 4px; background: #f0f0f0; border-radius: 2px; }
+          code[class*="language-"], pre[class*="language-"], .token-line, .token {
+            background: hsl(230, 1%, 98%);
+            color: hsl(230, 8%, 24%);
+          }
+          .code-example-note {
+            background: #F4F4F6;
+            border: 1px solid #E6E8EF;
+            border-radius: 3px;
+          }
+        </style>
+      </head><body>
+        <pre class="language-ts"><code class="language-ts"><span class="token keyword">const</span> value = 1;</code></pre>
+        <p><code>npm test</code></p>
+        <div class="code-example-note">note</div>
+      </body></html>`,
+    };
+
+    await act(async () => {
+      render(
+        <ChapterFrame
+          chapter={chapter}
+          preferences={darkPrefs}
+          anchor={null}
+          onExternalLink={vi.fn()}
+          onInternalLink={vi.fn()}
+        />,
+      );
+    });
+
+    const scopedStyle = Array.from(document.head.querySelectorAll("style"))
+      .map((style) => style.textContent ?? "")
+      .find((text) => text.includes("@scope (.chapter-content)"));
+
+    expect(scopedStyle).toContain("*:not(pre):not(pre *):not(code)");
+    expect(scopedStyle).toContain("color: inherit !important");
+    expect(scopedStyle).toContain("a { color: var(--link) !important; }");
+    expect(scopedStyle).toContain("border: none !important");
+    const allStyles = Array.from(document.head.querySelectorAll("style"))
+      .map((s) => s.textContent ?? "").join("\n");
+    expect(allStyles).toContain(".chapter-content");
+  });
 });

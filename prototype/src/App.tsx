@@ -1,14 +1,27 @@
 import { X } from "@phosphor-icons/react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ChangeEvent } from "react";
 import { AppHeader } from "./components/AppHeader";
 import { ConfirmDialog } from "./components/ConfirmDialog";
 import { ImportError } from "./components/ImportError";
 import { ImportStatus } from "./components/ImportStatus";
+import type { ReaderPreferences } from "./domain/publication";
 import { LibraryPage } from "./pages/LibraryPage";
 import { ReaderPage } from "./pages/ReaderPage";
 import { useReaderController } from "./services/useReaderController";
 import { usePathname } from "./routing/usePathname";
+
+const THEME_STORAGE_KEY = "scope-reader-theme";
+
+function readInitialTheme(): ReaderPreferences["theme"] {
+  try {
+    const stored = localStorage.getItem(THEME_STORAGE_KEY);
+    if (stored === "DARK" || stored === "LIGHT") return stored;
+  } catch {
+    /* ignore */
+  }
+  return window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "DARK" : "LIGHT";
+}
 
 export function App() {
   const controller = useReaderController();
@@ -16,9 +29,11 @@ export function App() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [aboutOpen, setAboutOpen] = useState(false);
   const [pendingDeleteBookId, setPendingDeleteBookId] = useState<string | null>(null);
+  const [theme, setTheme] = useState<ReaderPreferences["theme"]>(readInitialTheme);
 
   const pendingDeleteBook = controller.books.find((b) => b.bookId === pendingDeleteBookId) ?? null;
   const currentBookId = controller.state.status === "ready" ? controller.state.bookId : null;
+  const readerPreferences: ReaderPreferences = { fontSize: 16, lineHeight: 1.6, theme };
 
   const handleImport = (event: ChangeEvent<HTMLInputElement>): void => {
     const file = event.target.files?.[0];
@@ -40,6 +55,15 @@ export function App() {
 
   const nonBlockingIssues = controller.issues.filter((i) => !i.blocking);
 
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme === "DARK" ? "dark" : "light";
+    try {
+      localStorage.setItem(THEME_STORAGE_KEY, theme);
+    } catch {
+      /* ignore */
+    }
+  }, [theme]);
+
   return (
     <>
       <AppHeader
@@ -50,6 +74,8 @@ export function App() {
         onSelectBook={handleSelectBook}
         onImport={() => fileInputRef.current?.click()}
         onAbout={() => setAboutOpen(true)}
+        theme={theme}
+        onToggleTheme={() => setTheme((v) => (v === "DARK" ? "LIGHT" : "DARK"))}
       />
       <input
         ref={fileInputRef}
@@ -86,6 +112,7 @@ export function App() {
           publication={controller.state.status === "ready" ? controller.state.inspection : null}
           chapter={controller.state.status === "ready" ? controller.state.chapter : null}
           locator={controller.state.status === "ready" ? controller.state.location.locator : null}
+          preferences={readerPreferences}
           temporary={controller.state.status === "ready" ? controller.state.temporary : false}
           onOpenTarget={controller.openTarget}
           onOpenLibrary={() => navigate("/library")}
