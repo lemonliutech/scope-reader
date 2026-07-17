@@ -8,6 +8,13 @@ describe("preflightEpub", () => {
     expect(preflightEpub(createEpubFixture()).issues).toEqual([]);
   });
 
+  it("accepts an EPUB whose valid uncompressed mimetype is not the first ZIP entry", () => {
+    const result = preflightEpub(createEpubFixture({ mimetypeNotFirst: true }));
+
+    expect(result.issues).toEqual([]);
+    expect(result.packagePath).toBe("OPS/package.opf");
+  });
+
   it("reports a missing container", () => {
     expect(preflightEpub(createEpubFixture({ omitContainer: true })).issues.map((item) => item.code)).toContain(
       "CONTAINER_XML_MISSING",

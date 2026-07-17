@@ -159,7 +159,10 @@ function inspectMimetypeDirectory(
     issues.push(issue("MIMETYPE_MISSING", "INSPECT_PUBLICATION", true));
     return false;
   }
-  if (directory[0]?.name !== "mimetype" || directoryEntry.compressionMethod !== 0) {
+  // OCF requires `mimetype` to be the first ZIP entry. Some otherwise readable
+  // EPUBs are packaged with directory entries before it, so tolerate ordering
+  // here and validate the parts that affect identification and decoding.
+  if (directoryEntry.compressionMethod !== 0) {
     issues.push(issue("MIMETYPE_INVALID", "INSPECT_PUBLICATION", true));
     return false;
   }

@@ -45,6 +45,22 @@ describe("EpubEngineAdapter", () => {
     await session.destroy();
   });
 
+  it("opens a readable EPUB when directory entries precede mimetype", async () => {
+    const source = createSource(createEpubFixture({ mimetypeNotFirst: true }));
+    const adapter = new EpubEngineAdapter(() => new EpubJsDriver());
+
+    expect(await adapter.canOpen(source)).toBe(100);
+    await expect(adapter.inspect(source)).resolves.toMatchObject({
+      metadata: { title: "Scope Test Book" },
+      issues: [],
+    });
+
+    const session = await adapter.open(source);
+    await expect(session.loadChapter({ format: "EPUB", locator: "chapter.xhtml" }))
+      .resolves.toMatchObject({ html: expect.stringContaining("开始") });
+    await session.destroy();
+  });
+
   it("builds fallback navigation warning from reading order when driver navigation is empty", async () => {
     const source = createSource(createEpubFixture());
     const adapter = new EpubEngineAdapter(() => ({

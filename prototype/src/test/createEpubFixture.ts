@@ -8,6 +8,7 @@ export type EpubFixtureOptions = {
   encrypted?: boolean;
   omitContainer?: boolean;
   emptySpine?: boolean;
+  mimetypeNotFirst?: boolean;
 };
 
 export function createEpubFixture(options: EpubFixtureOptions = {}): Uint8Array {
@@ -19,6 +20,7 @@ export function createEpubFixture(options: EpubFixtureOptions = {}): Uint8Array 
   const scriptedProperty = options.scripted ? ' properties="scripted"' : "";
   const spine = options.emptySpine ? "" : '<itemref idref="chapter" />';
   const files: Zippable = {
+    ...(options.mimetypeNotFirst ? { "META-INF/": new Uint8Array() } : {}),
     mimetype: [strToU8("application/epub+zip"), { level: 0 }],
     "OPS/package.opf": strToU8(`<?xml version="1.0" encoding="UTF-8"?>
 <package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="book-id">
